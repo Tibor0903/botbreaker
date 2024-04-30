@@ -7,7 +7,7 @@ from discord.ext.commands import command, cooldown, is_owner, guild_only
 
 from colorama import Style, Fore, Back
 
-testtoken='MTIyODAzOTYyNTMyNzc3NTc2Ng.GEtNDL.jI_P3H5dyd8IMY59pYbKq1qPvgXBqddL2Ngx-Y'
+from config import *
 
 i = discord.Intents.default()
 i.members = True
@@ -28,7 +28,7 @@ async def embedtest(intr):
 try:
     if os.getlogin() == 'pi':
         print('starting production')
-        bot.run(testtoken)
+        bot.run(productiontoken)
     else:
         print('starting testing')
         bot.run(testtoken)
