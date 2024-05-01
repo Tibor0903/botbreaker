@@ -60,17 +60,20 @@ async def embedtest(intr):
 
 try:
 
-    if os.getlogin() == 'pi':
+    token = 0
 
+    if os.getlogin() == 'pi':
+        
         print('The bot is using the production token!')
-        client.run(production_token)
+        token = production_token
 
     else:
         print('The bot is using the test token!')
-        client.run(test_token)
+        token = test_token
 
     print(f'Start time: {time.ctime()}')
     print('---------------')
+    client.run(token)
 
 except NameError:
     print(Fore.RED+ 'Fatal: Token variable not found' +Style.RESET_ALL)
