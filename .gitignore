@@ -1,2 +1,5 @@
+# Stores tokens and debug guild id
 .env
-config.py
+
+# Bot's database
+main.db

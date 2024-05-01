@@ -1,4 +1,4 @@
-import discord,time,json,os,random
+import discord, time, os, aiosqlite as asql
 from discord import app_commands
 
 from dotenv import load_dotenv
@@ -10,7 +10,7 @@ from colorama import just_fix_windows_console as fix_win_console
 fix_win_console()
 load_dotenv()
 
-production_token = 0
+production_token = "0"
 test_token = os.getenv("token")
 debug_guild_id = os.getenv("debug_guild_id")
 
@@ -43,13 +43,24 @@ def getCurrentTime() -> str:
     return time.strftime("%d/%m/%Y %H:%M:%S UTC", time.gmtime())
 
 
+async def loadDatabase() -> None:
+
+    client.db = await asql.connect("main.db")
+    cursor = await client.db.cursor()
+
+    async with cursor as c:
+        await c.execute(("CREATE TABLE IF NOT EXISTS tasks (id INTEGER, msg_id INTEGER, department_name STRING,"
+                   "task_description STRING, status BOOLEAN, assigned_people JSON, steps JSON);"
+                   ))
 
 #-#-// Gateway //-#-#
 
 @client.event
 async def on_ready():
 
+    await loadDatabase()
     await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
+
     print(Fore.GREEN+"-----------\n")
     print(f"The bot has started session at {getCurrentTime()}!")
     print("\n-----------"+Style.RESET_ALL)
