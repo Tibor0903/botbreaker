@@ -136,6 +136,15 @@ async def create_task(intr :discord.Interaction, dpt :str, name :str):
 
     c: asql.Cursor = await client.db.cursor()
     id: int
+
+    await c.execute("SELECT id FROM tasks WHERE department_name = ? AND task_name = ?;", [dpt, name])
+    existing_task = await c.fetchone()
+
+    if len(existing_task): # If the task doesn't exist, the len is 0 (False)
+
+        await intr.response.send_message(f"Task already exists! ID: {existing_task[0]}", ephemeral=True)
+        await c.close()
+        return
   
     await c.execute(("INSERT INTO tasks (department_name, task_name, status) VALUES (?, ?, ?)"
                         "RETURNING id;"), (dpt, name, False))
