@@ -52,6 +52,10 @@ async def loadDatabase() -> None:
         await c.execute(("CREATE TABLE IF NOT EXISTS tasks (id INTEGER, msg_id INTEGER, department_name STRING,"
                    "task_description STRING, status BOOLEAN, assigned_people JSON, steps JSON);"
                    ))
+        
+    await client.db.commit()
+
+
 
 #-#-// Gateway //-#-#
 
