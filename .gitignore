@@ -1,1 +1,2 @@
-/ignored_folder
+.env
+config.py
