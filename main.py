@@ -3,9 +3,11 @@ from discord import app_commands
 
 from dotenv import load_dotenv
 from colorama import Style, Fore, Back
+from colorama import just_fix_windows_console as fix_win_console
 #from config import *
 
 
+fix_win_console()
 load_dotenv()
 
 production_token = 0
@@ -33,6 +35,14 @@ client = ModifiedClient(intents = intents)
 debug_guild = discord.Object(id = debug_guild_id)
 
 
+#-#-// Functions //-#-#
+
+def getCurrentTime() -> str:
+
+    # 01/01/1970 00:00:00 UTC
+    return time.strftime("%d/%m/%Y %H:%M:%S UTC", time.gmtime())
+
+
 
 #-#-// Gateway //-#-#
 
@@ -40,7 +50,27 @@ debug_guild = discord.Object(id = debug_guild_id)
 async def on_ready():
 
     await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
-    print(Fore.GREEN+"ready"+Style.RESET_ALL)
+    print(Fore.GREEN+"-----------\n")
+    print(f"The bot has started session at {getCurrentTime()}!")
+    print("\n-----------"+Style.RESET_ALL)
+
+
+@client.event
+async def on_resumed():
+
+    await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
+    print(Fore.GREEN+"-----------\n")
+    print(f"The bot has resumed session at {getCurrentTime()}!")
+    print("\n-----------"+Style.RESET_ALL)
+
+
+@client.event
+async def on_disconnect():
+
+    await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
+    print(Fore.RED+"-----------\n")
+    print(f"The bot has disconnected at {getCurrentTime()}!")
+    print("\n-----------"+Style.RESET_ALL)
 
 
 
@@ -63,20 +93,20 @@ try:
     token = 0
 
     if os.getlogin() == 'pi':
-        
-        print('The bot is using the production token!')
+
+        print(Fore.BLUE+'The bot is using the production token!')
         token = production_token
 
     else:
-        print('The bot is using the test token!')
+        print(Fore.BLUE+'The bot is using the test token!')
         token = test_token
 
-    print(f'Start time: {time.ctime()}')
-    print('---------------')
+    print(f'Start time: {getCurrentTime()}\n')
+    print('---------------'+Style.RESET_ALL)
     client.run(token)
 
 except NameError:
-    print(Fore.RED+ 'Fatal: Token variable not found' +Style.RESET_ALL)
+    print(Fore.RED+ '\nFatal: Token variable not found' +Style.RESET_ALL)
 
 except discord.errors.LoginFailure or discord.errors.HTTPException:
-    print(Fore.RED+ 'Fatal: Invalid token' +Style.RESET_ALL)
+    print(Fore.RED+ '\nFatal: Invalid token' +Style.RESET_ALL)
