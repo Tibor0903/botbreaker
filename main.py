@@ -1,5 +1,5 @@
 import discord,time,json,os,random
-from discord.ext import commands
+from discord import app_commands
 
 from dotenv import load_dotenv
 from colorama import Style, Fore, Back
@@ -12,9 +12,11 @@ token = os.getenv("token")
 debug_guild_id = os.getenv("debug_guild_id")
 
 
-class ModifiedBot(commands.Bot):
+class ModifiedClient(discord.Client):
     def __init__(self, *, intents :discord.Intents) -> None:
-        super().__init__()
+        super().__init__(intents=intents)
+
+        self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self) -> None:
         
@@ -24,26 +26,26 @@ class ModifiedBot(commands.Bot):
 
 
 intents = discord.Intents.default()
-intents.members = True
+#intents.members = True
 
-bot = ModifiedBot(intents = intents)
+client = ModifiedClient(intents = intents)
 debug_guild = discord.Object(id = debug_guild_id)
 
 
 
 #-#-// Gateway //-#-#
 
-@bot.event
+@client.event
 async def on_ready():
 
-    await bot.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
+    await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
     print(Fore.GREEN+"ready"+Style.RESET_ALL)
 
 
 
 #-#-// Slash Commands //-#-#
 
-@bot.slash_command(name='embedtest')
+@client.tree.command()
 async def embedtest(intr):
 
     embed=discord.Embed(title="Animators")
@@ -55,7 +57,7 @@ async def embedtest(intr):
 
 #-#-// Bot Connection //-#-#
 
-bot.run(token)
+client.run(token)
 
 
 # I'll use my own bot to test stuff
