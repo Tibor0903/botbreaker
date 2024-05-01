@@ -8,7 +8,8 @@ from colorama import Style, Fore, Back
 
 load_dotenv()
 
-token = os.getenv("token")
+production_token = 0
+test_token = os.getenv("token")
 debug_guild_id = os.getenv("debug_guild_id")
 
 
@@ -57,21 +58,22 @@ async def embedtest(intr):
 
 #-#-// Bot Connection //-#-#
 
-client.run(token)
+try:
 
-
-# I'll use my own bot to test stuff
-"""try:
     if os.getlogin() == 'pi':
-        print('starting production')
-        bot.run(productiontoken)
+
+        print('The bot is using the production token!')
+        client.run(production_token)
 
     else:
-        print('starting testing')
-        bot.run(testtoken)
+        print('The bot is using the test token!')
+        client.run(test_token)
+
+    print(f'Start time: {time.ctime()}')
+    print('---------------')
 
 except NameError:
-    print(Fore.RED+'fatal: token variable not found'+Style.RESET_ALL)
+    print(Fore.RED+ 'Fatal: Token variable not found' +Style.RESET_ALL)
 
 except discord.errors.LoginFailure or discord.errors.HTTPException:
-    print(Fore.RED+'fatal: invalid token'+Style.RESET_ALL)"""
+    print(Fore.RED+ 'Fatal: Invalid token' +Style.RESET_ALL)
