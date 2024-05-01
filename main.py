@@ -2,7 +2,7 @@ import discord,time,json,os,random
 from discord.ext import commands
 
 from colorama import Style, Fore, Back
-from config import *
+from ignored_folder.config import *
 
 i = discord.Intents.default()
 i.members = True
