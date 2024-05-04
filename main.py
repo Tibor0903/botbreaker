@@ -40,9 +40,8 @@ class TaskEmbed(discord.Embed):
         self.color = discord.colour.parse_hex_number(color_hex_value)
 
         status_emoji = ":white_check_mark:" if finished else ":blue_square:"
-        status_emoji = ":x:" if deleted else status_emoji
+        if deleted: status_emoji = "[DELETED]"
 
-        id = "[DELETED]" if deleted else id
         icon_url = ("https://cdn.discordapp.com/attachments/1234791407265251402/1236177556630142996/6d66b23b5f142921.jpg?"
                     "ex=66370f90&is=6635be10&hm=6f1163150dd284b768e4da7caba14450d6265c8d298bbc47d91beb8afba70c95&")
 
@@ -54,9 +53,19 @@ class TaskEmbed(discord.Embed):
             steps :list = (json.loads(steps))["steps"]
             for step in steps:
 
-                status_str = "Finished :white_check_mark:" if finished else "In progress :blue_square:"
-                description += f"{str(i+1)}. {step["name"]} - {status_str}\n"
+                status_str = "Finished :white_check_mark:" if step["status"] else "In progress :blue_square:"
+                if deleted: status_str = ":x:"
+
+                description += f"{str(i+1)}. {step["name"]}: {status_str}\n"
                 i += 1
+
+        if assigned_peeps:
+            description += "\n Assigned people: \n"
+
+            people = (json.loads(assigned_peeps))["user_ids"]
+            for user_id in people:
+
+                description += f"<@{user_id}>\n"
 
         self.description = description
 
@@ -94,11 +103,20 @@ async def getTaskEmbedFromID(id :int):
 
     task_name, dpt_name = values[3], values[2]
     status = True if values[4] else False
-    steps = values[6]
+    steps, assigned_people = values[6], values[5]
 
-    embed = TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps)
+    embed = TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps, assigned_peeps=assigned_people)
 
     return embed
+
+
+async def updateTaskEmbed(intr :discord.Interaction, msg_id :int, embed :discord.Embed):
+
+    for channel in intr.guild.channels:
+        if type(channel) != discord.TextChannel: continue
+
+        msg = await channel.fetch_message(msg_id)
+        await msg.edit(embed = embed)
 
 
 
@@ -118,6 +136,52 @@ def createJSONSteps(json_str: str | None, step_name: str, step_status: bool, ind
     steps["steps"].insert(index, {"name":step_name, "status":step_status})
     return json.dumps(steps)
 
+
+def createTable(keys :list, values :list):
+
+    horizontal_count = [len(key) for key in keys]
+
+    for value_tuple in values:
+
+        for value in value_tuple:
+            i = value_tuple.index(value)
+
+            if horizontal_count[i] >= len(str(value)): continue
+
+            horizontal_count[i] = len(str(value))
+
+    table = ""
+
+    for key in keys:
+        i = keys.index(key)
+
+        table += key
+        for i in range(horizontal_count[i] - len(key)): table += " "
+        table += " | "
+
+    divider = "\n"
+    for i in range(len(keys)):
+        
+        for o in range(horizontal_count[i]): divider += "-"
+
+        if i == len(keys) - 1: divider += "-|"
+        else: divider += "-|-"
+
+    value_rows = "\n"
+    for value_tuple in values:
+        for value in value_tuple:
+            i = value_tuple.index(value)
+            value = str(value)
+
+            value_rows += value
+            for o in range(horizontal_count[i] - len(value)): value_rows += " "
+            value_rows += " | "
+
+        value_rows += "\n"
+
+    table += divider + value_rows
+
+    return table
 
 
 async def loadDatabase() -> None:
@@ -197,7 +261,7 @@ async def embedtest(intr):
 async def create_task(intr :discord.Interaction, dpt :str, name :str, hide_reply :bool = False):
 
     c: asql.Cursor = await client.db.cursor()
-    response_msg = "```yaml \nCreated a task!```"
+    response_msg = "```yaml\n Created a task!```"
 
     await c.execute("SELECT id FROM tasks WHERE department_name = ? AND task_name = ?;", [dpt, name])
 
@@ -233,10 +297,23 @@ async def delete_task(intr: discord.Interaction, id: int):
     c: asql.Cursor = await client.db.cursor()
 
     async with c:
-        await c.execute(f"DELETE FROM tasks WHERE id = ?;", [id])
+        await c.execute("SELECT * FROM tasks WHERE id = ?;", [id])
+        
+        if (await c.fetchone()) is None: await c.close(); return
+
+        await c.execute("DELETE FROM tasks WHERE id = ? RETURNING *;", [id])
+        task_values = await c.fetchone()
         await client.db.commit()
 
-    await intr.response.send_message(f"Deleted task under id {id}.")
+    await intr.response.send_message(f"```yaml\n Deleted task under id {id}.```")
+
+    msg_id = task_values[1]
+    name, dpt = task_values[3], task_values[2]
+    steps, people = task_values[6], task_values[5]
+
+    embed = TaskEmbed(id=id, task_name=name, task_dpt=dpt, deleted=True, steps=steps, assigned_peeps=people)
+
+    await updateTaskEmbed(intr, msg_id, embed)
     
     
 #-#-#-// Show_Task //-#-#-#
@@ -244,7 +321,9 @@ async def delete_task(intr: discord.Interaction, id: int):
 @client.tree.command()
 async def show_task(intr :discord.Interaction, id :int):
 
+    c :asql.Cursor = await client.db.cursor()
     embed = await getTaskEmbedFromID(id)
+
     if not embed:
 
         await intr.response.send_message(f"```ml\n ERROR: task doesn't exist```")
@@ -252,45 +331,38 @@ async def show_task(intr :discord.Interaction, id :int):
 
     await intr.response.send_message(embed = embed)
 
+    msg = await intr.original_response()
+
+    async with c:
+        await c.execute("UPDATE tasks SET msg_id = ? WHERE id = ?", [msg.id, id])
+        await client.db.commit()
+
 
 #-#-#-// List_Tasks //-#-#-#
 
 @client.tree.command()
-async def list_tasks(intr: discord.Interaction, show_more :bool = False):
+async def list_tasks(intr: discord.Interaction):
     
-    c: asql.Cursor = await client.db.cursor()
-    response_msg = "```yaml\n Here's a list of tasks!```"
-
+    c :asql.Cursor = await client.db.cursor()
+    response_msg = ("```yaml\n Here's a list of tasks!```\n"
+                    "```\n")
+    
     async with c:
-        await c.execute("SELECT id FROM tasks;")
-        tasks_ids = await c.fetchall()
+        await c.execute("SELECT id, task_name, msg_id, status FROM tasks;")
+        tasks = await c.fetchall()
 
-    embeds = []
-    second_embeds = []
-    for task_id in tasks_ids:
+    new_tasks = []
+    for task in tasks:
 
-        i = tasks_ids.index(task_id) + 1
+        status = "Finished" if task[3] else "In Process"
 
-        if i <= 10:
-            embeds.append((await getTaskEmbedFromID(task_id[0])))
-            continue
+        new_tasks.append([task[0], task[1], task[2], status])
 
-        second_embeds.append((await getTaskEmbedFromID(task_id[0])))
 
-    await intr.response.send_message(response_msg, embeds = embeds)
+    response_msg += createTable(["ids", "task_name", "message_ids", "status"], new_tasks)
 
-    if not show_more: return
-
-    additional_list = []
-    second_embeds_len = len(second_embeds)
-    for embed in second_embeds:
-        i = second_embeds.index(embed) + 1
-
-        additional_list.append(embed)
-        if i % 10 == 0 or i == second_embeds_len:
-
-            await intr.channel.send(embeds=additional_list)
-            additional_list = []
+    await intr.response.defer()
+    await intr.followup.send(response_msg +"```")
 
 
 #-#-#-// Assign_People //-#-#-#
@@ -309,11 +381,16 @@ async def assign_people(intr: discord.Interaction, id: int, user: discord.User =
 
     assigned_people = createJSONOfAssignedPeople(stored_assigned_people, user)
 
-    await c.execute("UPDATE tasks SET assigned_people = ? WHERE id = ?;", [assigned_people, id])
+    await c.execute("UPDATE tasks SET assigned_people = ? WHERE id = ? RETURNING msg_id;", [assigned_people, id])
+    msg_id = (await c.fetchone())[0]
+
     await client.db.commit()
     await c.close()
     
     await intr.response.send_message(f"Assigned {user.mention} to Task{id}!", ephemeral=True)
+
+    embed = await getTaskEmbedFromID(id)
+    await updateTaskEmbed(intr, msg_id, embed)
 
 
 #-#-#-// Add_Step //-#-#-#
@@ -328,12 +405,16 @@ async def create_step(intr :discord.Interaction, id :int, name :str, index: int 
 
     steps = createJSONSteps(steps, name, status, index)
 
-    await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [steps, id])
+    await c.execute("UPDATE tasks SET steps = ? WHERE id = ? RETURNING msg_id;", [steps, id])
+    msg_id = (await c.fetchone())[0]
+
     await client.db.commit()
     await c.close()
 
-    await intr.response.send_message("lalala")
+    await intr.response.send_message(f"```yaml\n Created a step for task {id}!```")
 
+    embed = await getTaskEmbedFromID(id)
+    await updateTaskEmbed(intr, msg_id, embed)
 
 
 #-#-#-// Update Step //-#-#-#
@@ -353,16 +434,21 @@ async def update_step(intr :discord.Interaction, task_id :int, step_index :int, 
     steps_dict = json.loads(steps)
     step = steps_dict["steps"][index]
 
-    print(step)
+    #print(step)
     step['name'] = new_name
-    print(step)
+    #print(step)
     steps_dict["steps"][index] = step
 
-    await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [json.dumps(steps_dict), id])
+    await c.execute("UPDATE tasks SET steps = ? WHERE id = ? RETURNING msg_id;", [json.dumps(steps_dict), id])
+    msg_id = (await c.fetchone())[0]
+
     await client.db.commit()
     await c.close()
 
-    await intr.response.send_message('',embed=(await getTaskEmbedFromID(task_id)))
+    await intr.response.send_message(f"```yaml\n Updated step {step_index} in task {task_id}!```")
+
+    embed = await getTaskEmbedFromID(id)
+    await updateTaskEmbed(intr, msg_id, embed)
 
 
 #-#-#-// get db //-#-#-#
