@@ -54,7 +54,8 @@ class TaskEmbed(discord.Embed):
             steps :list = (json.loads(steps))["steps"]
             for step in steps:
 
-                description += f"{str(i+1)}. {step["name"]} - {"Finished :white_check_mark:" if finished else "In progress :blue_square:"}\n"
+                status_str = "Finished :white_check_mark:" if finished else "In progress :blue_square:"
+                description += f"{str(i+1)}. {step["name"]} - {status_str}\n"
                 i += 1
 
         self.description = description
@@ -183,20 +184,19 @@ async def embedtest(intr):
 @client.tree.command(description="Creates a task")
 @app_commands.rename(dpt="department_name", name="task_name")
 @app_commands.describe(dpt="the department's name", 
-                       name="task's name (animate something, code something, etc.)")
-async def create_task(intr :discord.Interaction, dpt :str, name :str):
+                       name="task's name (animate something, code something, etc.)",
+                       hide_reply="hides a reply to the command (also doesn't show who ran the command)")
+async def create_task(intr :discord.Interaction, dpt :str, name :str, hide_reply :bool = False):
 
     c: asql.Cursor = await client.db.cursor()
-    id: int
+    response_msg = "```yaml \nCreated a task!```"
 
     await c.execute("SELECT id FROM tasks WHERE department_name = ? AND task_name = ?;", [dpt, name])
-    existing_task = await c.fetchone()
 
-    if not (existing_task is None) and len(existing_task): # If the task doesn't exist, the len is 0 (False)
+    similar_task = await c.fetchone()
+    if not (similar_task is None) and len(similar_task): # If the task doesn't exist, the len is 0 (False)
 
-        await intr.response.send_message(f"Task already exists! ID: {existing_task[0]}", ephemeral=True)
-        await c.close()
-        return
+        response_msg = f"```asciidoc \nWARNING:: Similar task already exists! ID: {similar_task[0]}```"
   
     await c.execute(("INSERT INTO tasks (department_name, task_name, status) VALUES (?, ?, ?)"
                         "RETURNING id;"), [dpt, name, False])
@@ -204,7 +204,7 @@ async def create_task(intr :discord.Interaction, dpt :str, name :str):
     id = (await c.fetchone())[0]
 
     await client.db.commit()
-    await intr.response.send_message("Created a task", ephemeral=True)
+    await intr.response.send_message(response_msg, ephemeral=hide_reply)
 
     embed = TaskEmbed(id=id, task_name=name, task_dpt=dpt)
     msg = await intr.channel.send(embed=embed)
@@ -329,7 +329,7 @@ async def update_step(intr :discord.Interaction, id :int, name :str, index :int 
     await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
     steps = (await c.fetchone())[0]
 
-
+    
 
     await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [steps, id])
     await client.db.commit()
@@ -340,8 +340,8 @@ async def update_step(intr :discord.Interaction, id :int, name :str, index :int 
 #-#-#-// get db //-#-#-#
 
 @client.tree.command(name = 'getdb', description='get the database (debug)', guild = debug_guild)
-async def get_db(intr :discord.Interaction): # ill go try this on my own file
-    await intr.response.send_message('',file=discord.File('main.db')) # kk
+async def get_db(intr :discord.Interaction):
+    await intr.response.send_message('',file=discord.File('main.db'))
 
 #-#-#-#-#-#-#-#-#-// Bot Connection //-#-#-#-#-#-#-#-#-#
 
