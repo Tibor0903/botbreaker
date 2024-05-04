@@ -1,11 +1,10 @@
+from datetime import datetime
 import discord, time, os, json, aiosqlite as asql
 from discord import app_commands
 
 from dotenv import load_dotenv
 from colorama import Style, Fore, Back
 from colorama import just_fix_windows_console as fix_win_console
-#from config import *
-
 
 fix_win_console()
 load_dotenv()
@@ -13,6 +12,8 @@ load_dotenv()
 production_token = "0"
 test_token = os.getenv("token")
 debug_guild_id = os.getenv("debug_guild_id")
+
+sys_message_divider = "---------------"
 
 
 class ModifiedClient(discord.Client):
@@ -28,6 +29,38 @@ class ModifiedClient(discord.Client):
         await self.tree.sync(guild=debug_guild)
 
 
+class TaskEmbed(discord.Embed):
+    def __init__(self, *, id :int, task_name :str, task_dpt :str, finished :bool = False, deleted :bool = False, steps :str = None, assigned_peeps :str = None):
+
+        super().__init__(title=task_name)
+
+        color_hex_value = "3DF991" if finished else "3D9AF9"
+        color_hex_value = "FF3838" if deleted else color_hex_value
+
+        self.color = discord.colour.parse_hex_number(color_hex_value)
+
+        status_emoji = ":white_check_mark:" if finished else ":blue_square:"
+        status_emoji = ":x:" if deleted else status_emoji
+
+        id = "[DELETED]" if deleted else id
+        icon_url = ("https://cdn.discordapp.com/attachments/1234791407265251402/1236177556630142996/6d66b23b5f142921.jpg?"
+                    "ex=66370f90&is=6635be10&hm=6f1163150dd284b768e4da7caba14450d6265c8d298bbc47d91beb8afba70c95&")
+
+        self.set_author(name=task_dpt, icon_url=icon_url)
+        description = f"Status: {status_emoji}\n\n"
+        
+        if steps:
+            i = 0
+            steps :list = (json.loads(steps))["steps"]
+            for step in steps:
+
+                description += f"{str(i+1)}. {step["name"]} - {"Finished :white_check_mark:" if finished else "In progress :blue_square:"}\n"
+                i += 1
+
+        self.description = description
+
+        
+
 intents = discord.Intents.default()
 intents.members = True
 
@@ -36,12 +69,14 @@ debug_guild = discord.Object(id = debug_guild_id)
 
 
 
-#-#-// Functions //-#-#
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-// Functions //-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+
 
 def getCurrentTime() -> str:
 
-    # 01/01/1970 00:00:00 UTC
-    return time.strftime("%d/%m/%Y %H:%M:%S UTC", time.gmtime())
+    # 01/01/1970 00:00:00 GMT
+    return time.strftime("%d/%m/%Y %H:%M:%S GMT", time.gmtime())
 
 
 def createTaskEmbed(id: int, dpt: str, desc: str, finished: bool) -> discord.Embed:
@@ -57,12 +92,23 @@ def createTaskEmbed(id: int, dpt: str, desc: str, finished: bool) -> discord.Emb
     return embed
 
 
+
 def createJSONOfAssignedPeople(json_str: str | None, user: discord.User) -> str:
 
     assigned_people = {"user_ids":[]} if not json_str else json.loads(json_str)
     
     assigned_people["user_ids"].append(user.id)
     return json.dumps(assigned_people)
+
+
+def createJSONSteps(json_str: str | None, step_name: str, step_status: bool, index :int) -> str:
+    
+    steps = {"steps":[]} if not json_str else json.loads(json_str)
+    index = len(steps["steps"]) if index <= 0 else index - 1
+
+    steps["steps"].insert(index, {"name":step_name, "status":step_status})
+    return json.dumps(steps)
+
 
 
 async def loadDatabase() -> None:
@@ -85,7 +131,9 @@ async def loadDatabase() -> None:
 
 
 
-#-#-// Gateway //-#-#
+#-#-#-#-#-#-#-#-#-#-// Gateway //-#-#-#-#-#-#-#-#-#-#
+
+
 
 @client.event
 async def on_ready():
@@ -93,31 +141,33 @@ async def on_ready():
     await loadDatabase()
     await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
 
-    print(Fore.GREEN+"-----------\n")
+    print(Fore.GREEN+f"{sys_message_divider}\n")
     print(f"The bot has started session at {getCurrentTime()}!")
-    print("\n-----------"+Style.RESET_ALL)
+    print(f"\n{sys_message_divider}"+Style.RESET_ALL)
 
 
 @client.event
 async def on_resumed():
 
     await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
-    print(Fore.GREEN+"-----------\n")
+    print(Fore.GREEN+f"{sys_message_divider}\n")
     print(f"The bot has resumed session at {getCurrentTime()}!")
-    print("\n-----------"+Style.RESET_ALL)
+    print(f"\n{sys_message_divider}"+Style.RESET_ALL)
 
 
 @client.event
 async def on_disconnect():
 
     await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
-    print(Fore.RED+"-----------\n")
+    print(Fore.RED+"---------------\n")
     print(f"The bot has disconnected at {getCurrentTime()}!")
-    print("\n-----------"+Style.RESET_ALL)
+    print("\n---------------"+Style.RESET_ALL)
 
 
 
-#-#-// Slash Commands //-#-#
+#-#-#-#-#-#-#-#-#-#-#-#-#-// Slash Commands //-#-#-#-#-#-#-#-#-#-#-#-#-#
+
+
 
 @client.tree.command()
 async def embedtest(intr):
@@ -127,6 +177,8 @@ async def embedtest(intr):
 
     await intr.response.send_message('', embed=embed)
 
+
+#-#-#-// Create_Task //-#-#-#
 
 @client.tree.command(description="Creates a task")
 @app_commands.rename(dpt="department_name", name="task_name")
@@ -140,28 +192,30 @@ async def create_task(intr :discord.Interaction, dpt :str, name :str):
     await c.execute("SELECT id FROM tasks WHERE department_name = ? AND task_name = ?;", [dpt, name])
     existing_task = await c.fetchone()
 
-    if len(existing_task): # If the task doesn't exist, the len is 0 (False)
+    if not (existing_task is None) and len(existing_task): # If the task doesn't exist, the len is 0 (False)
 
         await intr.response.send_message(f"Task already exists! ID: {existing_task[0]}", ephemeral=True)
         await c.close()
         return
   
     await c.execute(("INSERT INTO tasks (department_name, task_name, status) VALUES (?, ?, ?)"
-                        "RETURNING id;"), (dpt, name, False))
+                        "RETURNING id;"), [dpt, name, False])
         
     id = (await c.fetchone())[0]
 
     await client.db.commit()
     await intr.response.send_message("Created a task", ephemeral=True)
 
-    embed = createTaskEmbed(id, dpt, name, False)
+    embed = TaskEmbed(id=id, task_name=name, task_dpt=dpt)
     msg = await intr.channel.send(embed=embed)
     
-    await c.execute("UPDATE tasks SET msg_id = ? WHERE id = ?;", (msg.id, id))
+    await c.execute("UPDATE tasks SET msg_id = ? WHERE id = ?;", [msg.id, id])
 
     await client.db.commit()
     await c.close()
 
+
+#-#-#-// Delete_Task //-#-#-#
 
 @client.tree.command(description="Deletes a chosen task")
 @app_commands.rename(id="task_id")
@@ -174,8 +228,30 @@ async def delete_task(intr: discord.Interaction, id: int):
         await c.execute(f"DELETE FROM tasks WHERE id = ?;", [id])
         await client.db.commit()
 
-    await intr.response.send_message(f"Deleted task under id {id}.")    
+    await intr.response.send_message(f"Deleted task under id {id}.")
+    
+    
+#-#-#-// Show_Task //-#-#-#
 
+@client.tree.command()
+async def show_task(intr :discord.Interaction, id :int):
+
+    c :asql.Cursor = await client.db.cursor()
+
+    async with c:
+        await c.execute("SELECT * FROM tasks WHERE id = ?", [id])
+        values = await c.fetchone()
+
+    task_name, dpt_name = values[3], values[2]
+    status = True if values[4] else False
+    steps = values[6]
+
+    embed = TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps)
+
+    await intr.response.send_message(embed=embed)
+
+
+#-#-#-// List_Tasks //-#-#-#
 
 @client.tree.command()
 async def list_tasks(intr: discord.Interaction):
@@ -196,11 +272,13 @@ async def list_tasks(intr: discord.Interaction):
                      f"Task{id}: ID - {id}\n"
                      f"    ({dpt_name}) {name}\n"
                      f"    Status: {"Done" if finished else "Not finished"}"
-                     "```\n\n"
+                     "```\n"
                     )
     
     await intr.response.send_message(response)
 
+
+#-#-#-// Assign_People //-#-#-#
 
 @client.tree.command(description="Assigns chosen user to a task")
 @app_commands.rename(id="task_id")
@@ -223,11 +301,53 @@ async def assign_people(intr: discord.Interaction, id: int, user: discord.User =
     await intr.response.send_message(f"Assigned {user.mention} to Task{id}!", ephemeral=True)
 
 
+#-#-#-// Add_Step //-#-#-#
 
-#-#-// Bot Connection //-#-#
+@client.tree.command()
+async def create_step(intr :discord.Interaction, id :int, name :str, index: int = 0, status :bool = False):
+
+    c: asql.Cursor = await client.db.cursor()
+
+    await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
+    steps = (await c.fetchone())[0]
+
+    steps = createJSONSteps(steps, name, status, index)
+
+    await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [steps, id])
+    await client.db.commit()
+    await c.close()
+
+    await intr.response.send_message("lalala")
+
+#-#-#-// Update Step //-#-#-#
+
+@client.tree.command()
+async def update_step(intr :discord.Interaction, id :int, name :str, index :int = 0):
+
+    c: asql.Cursor = await client.db.cursor()
+
+    await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
+    steps = (await c.fetchone())[0]
+
+
+
+    await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [steps, id])
+    await client.db.commit()
+    await c.close()
+
+    await intr.response.send_message("lalala")
+
+#-#-#-// get db //-#-#-#
+
+@client.tree.command(name = 'getdb', description='get the database (debug)', guild = debug_guild)
+async def get_db(intr :discord.Interaction): # ill go try this on my own file
+    await intr.response.send_message('',file=discord.File('main.db')) # kk
+
+#-#-#-#-#-#-#-#-#-// Bot Connection //-#-#-#-#-#-#-#-#-#
+
+
 
 try:
-
     token = 0
 
     if os.getlogin() == 'pi':
