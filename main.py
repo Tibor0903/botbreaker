@@ -233,11 +233,10 @@ async def delete_task(intr: discord.Interaction, id: int):
     
 #-#-#-// Show_Task //-#-#-#
 
-@client.tree.command()
-async def show_task(intr :discord.Interaction, id :int):
-
+# discord wont let us call functions for whatever reason, so made this another function
+# probably a better place to put the function lma
+async def getTaskEmbedFromID(id):
     c :asql.Cursor = await client.db.cursor()
-
     async with c:
         await c.execute("SELECT * FROM tasks WHERE id = ?", [id])
         values = await c.fetchone()
@@ -246,9 +245,12 @@ async def show_task(intr :discord.Interaction, id :int):
     status = True if values[4] else False
     steps = values[6]
 
-    embed = TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps)
+    return(TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps))
 
-    await intr.response.send_message(embed=embed)
+@client.tree.command()
+async def show_task(intr :discord.Interaction, id :int):
+
+    await intr.response.send_message(embed=(await getTaskEmbedFromID(id)))
 
 
 #-#-#-// List_Tasks //-#-#-#
@@ -322,20 +324,31 @@ async def create_step(intr :discord.Interaction, id :int, name :str, index: int 
 #-#-#-// Update Step //-#-#-#
 
 @client.tree.command()
-async def update_step(intr :discord.Interaction, id :int, name :str, index :int = 0):
+async def update_step(intr :discord.Interaction, task_id :int, step_index :int, new_name :str):
+
+    id=task_id
+    index=step_index-1 # need -1, idk why
+
 
     c: asql.Cursor = await client.db.cursor()
 
     await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
     steps = (await c.fetchone())[0]
-
     
+    steps_dict = json.loads(steps)
+    step = steps_dict["steps"][index]
 
-    await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [steps, id])
+    print(step)
+    step['name'] = new_name
+    print(step)
+    steps_dict["steps"][index] = step
+
+    await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [json.dumps(steps_dict), id])
     await client.db.commit()
     await c.close()
 
-    await intr.response.send_message("lalala")
+    await intr.response.send_message('',embed=(await getTaskEmbedFromID(task_id)))
+
 
 #-#-#-// get db //-#-#-#
 
