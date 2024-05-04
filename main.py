@@ -60,6 +60,8 @@ class TaskEmbed(discord.Embed):
 
         self.description = description
 
+        self.set_footer(text = f"ID: {id}")
+
         
 
 intents = discord.Intents.default()
@@ -80,15 +82,21 @@ def getCurrentTime() -> str:
     return time.strftime("%d/%m/%Y %H:%M:%S GMT", time.gmtime())
 
 
-def createTaskEmbed(id: int, dpt: str, desc: str, finished: bool) -> discord.Embed:
+async def getTaskEmbedFromID(id :int):
 
-    color_hex_value = "3DF991" if finished else "3D9AF9"
+    c :asql.Cursor = await client.db.cursor()
 
-    color = discord.colour.parse_hex_number(color_hex_value)
-    embed = discord.Embed(color=color, title=desc)
+    async with c:
+        await c.execute("SELECT * FROM tasks WHERE id = ?", [id])
+        values = await c.fetchone()
 
-    embed.set_author(name=dpt)
-    embed.set_footer(text="ID: "+str(id))
+    if not values: return None
+
+    task_name, dpt_name = values[3], values[2]
+    status = True if values[4] else False
+    steps = values[6]
+
+    embed = TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps)
 
     return embed
 
@@ -160,9 +168,9 @@ async def on_resumed():
 async def on_disconnect():
 
     await client.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
-    print(Fore.RED+"---------------\n")
+    print(Fore.RED+f"{sys_message_divider}\n")
     print(f"The bot has disconnected at {getCurrentTime()}!")
-    print("\n---------------"+Style.RESET_ALL)
+    print(f"\n{sys_message_divider}"+Style.RESET_ALL)
 
 
 
@@ -196,7 +204,7 @@ async def create_task(intr :discord.Interaction, dpt :str, name :str, hide_reply
     similar_task = await c.fetchone()
     if not (similar_task is None) and len(similar_task): # If the task doesn't exist, the len is 0 (False)
 
-        response_msg = f"```asciidoc \nWARNING:: Similar task already exists! ID: {similar_task[0]}```"
+        response_msg = f"```prolog\n WARNING: similar task already exists! id: {similar_task[0]}```"
   
     await c.execute(("INSERT INTO tasks (department_name, task_name, status) VALUES (?, ?, ?)"
                         "RETURNING id;"), [dpt, name, False])
@@ -233,51 +241,56 @@ async def delete_task(intr: discord.Interaction, id: int):
     
 #-#-#-// Show_Task //-#-#-#
 
-# discord wont let us call functions for whatever reason, so made this another function
-# probably a better place to put the function lma
-async def getTaskEmbedFromID(id):
-    c :asql.Cursor = await client.db.cursor()
-    async with c:
-        await c.execute("SELECT * FROM tasks WHERE id = ?", [id])
-        values = await c.fetchone()
-
-    task_name, dpt_name = values[3], values[2]
-    status = True if values[4] else False
-    steps = values[6]
-
-    return(TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps))
-
 @client.tree.command()
 async def show_task(intr :discord.Interaction, id :int):
 
-    await intr.response.send_message(embed=(await getTaskEmbedFromID(id)))
+    embed = await getTaskEmbedFromID(id)
+    if not embed:
+
+        await intr.response.send_message(f"```ml\n ERROR: task doesn't exist```")
+        return
+
+    await intr.response.send_message(embed = embed)
 
 
 #-#-#-// List_Tasks //-#-#-#
 
 @client.tree.command()
-async def list_tasks(intr: discord.Interaction):
+async def list_tasks(intr: discord.Interaction, show_more :bool = False):
     
     c: asql.Cursor = await client.db.cursor()
-    response = ""
+    response_msg = "```yaml\n Here's a list of tasks!```"
 
     async with c:
-        await c.execute("SELECT * FROM tasks;")
-        tasks = await c.fetchall()
+        await c.execute("SELECT id FROM tasks;")
+        tasks_ids = await c.fetchall()
 
-    for task in tasks:
+    embeds = []
+    second_embeds = []
+    for task_id in tasks_ids:
 
-        id, dpt_name, name = task[0], task[2], task[3]
-        finished = True if task[4] else False
+        i = tasks_ids.index(task_id) + 1
 
-        response += ("```"
-                     f"Task{id}: ID - {id}\n"
-                     f"    ({dpt_name}) {name}\n"
-                     f"    Status: {"Done" if finished else "Not finished"}"
-                     "```\n"
-                    )
-    
-    await intr.response.send_message(response)
+        if i <= 10:
+            embeds.append((await getTaskEmbedFromID(task_id[0])))
+            continue
+
+        second_embeds.append((await getTaskEmbedFromID(task_id[0])))
+
+    await intr.response.send_message(response_msg, embeds = embeds)
+
+    if not show_more: return
+
+    additional_list = []
+    second_embeds_len = len(second_embeds)
+    for embed in second_embeds:
+        i = second_embeds.index(embed) + 1
+
+        additional_list.append(embed)
+        if i % 10 == 0 or i == second_embeds_len:
+
+            await intr.channel.send(embeds=additional_list)
+            additional_list = []
 
 
 #-#-#-// Assign_People //-#-#-#
@@ -321,6 +334,8 @@ async def create_step(intr :discord.Interaction, id :int, name :str, index: int 
 
     await intr.response.send_message("lalala")
 
+
+
 #-#-#-// Update Step //-#-#-#
 
 @client.tree.command()
@@ -356,6 +371,8 @@ async def update_step(intr :discord.Interaction, task_id :int, step_index :int, 
 async def get_db(intr :discord.Interaction):
     await intr.response.send_message('',file=discord.File('main.db'))
 
+
+
 #-#-#-#-#-#-#-#-#-// Bot Connection //-#-#-#-#-#-#-#-#-#
 
 
@@ -373,7 +390,7 @@ try:
         token = test_token
 
     print(f'Start time: {getCurrentTime()}\n')
-    print('---------------'+Style.RESET_ALL)
+    print(f'{sys_message_divider}'+Style.RESET_ALL)
     client.run(token)
 
 except NameError:
