@@ -17,7 +17,7 @@ debug_guild = discord.Object(debug_guild_id)
 
 async def setup(client :commands.Bot):
 
-    await client.add_cog( tasks(client) )
+    await client.add_cog(tasks(client))
 
 
 class tasks(commands.Cog):
@@ -242,7 +242,8 @@ class tasks(commands.Cog):
 
     #-#-#-// get db //-#-#-#
 
-    @app_commands.command(description='get the database (debug)', guild = debug_guild)
+    @app_commands.command(description='get the database (debug)')
+    @app_commands.guilds(debug_guild)
     async def get_db(self, intr :discord.Interaction):
 
         await intr.response.send_message('',file=discord.File('main.db'))
