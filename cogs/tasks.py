@@ -1,4 +1,4 @@
-import aiosqlite as asql
+import os, aiosqlite as asql
 
 from utils.functions import *
 from utils.task_embed import TaskEmbed
@@ -6,6 +6,13 @@ from utils.task_embed import TaskEmbed
 import discord
 from discord import app_commands
 from discord.ext import commands
+
+from dotenv import load_dotenv
+load_dotenv()
+
+
+debug_guild_id = os.getenv("debug_guild_id")
+debug_guild = discord.Object(debug_guild_id)
 
 
 async def setup(client :commands.Bot):
@@ -139,3 +146,103 @@ class tasks(commands.Cog):
 
         await intr.response.defer()
         await intr.followup.send(response_msg +"```")
+
+    
+    #-#-#-// Assign_People //-#-#-#
+
+    @app_commands.command(description="Assigns chosen user to a task")
+    @app_commands.rename(id="task_id")
+    @app_commands.describe(id="id of the task you want to assign the user to",
+                        user="the user you want to assign to the task (automatically selects you if skipped)")
+    async def assign_people(self, intr: discord.Interaction, id: int, user: discord.User = None):
+
+        client = self.client
+
+        c: asql.Cursor = await client.db.cursor()
+        user = user if user else intr.user
+
+        await c.execute("SELECT assigned_people FROM tasks WHERE id = ?;", [id])
+        stored_assigned_people = (await c.fetchone())[0]
+
+        assigned_people = createJSONOfAssignedPeople(stored_assigned_people, user)
+
+        await c.execute("UPDATE tasks SET assigned_people = ? WHERE id = ? RETURNING msg_id;", [assigned_people, id])
+        msg_id = (await c.fetchone())[0]
+
+        await client.db.commit()
+        await c.close()
+        
+        await intr.response.send_message(f"Assigned {user.mention} to Task{id}!", ephemeral=True)
+
+        embed = await getTaskEmbedFromID(id)
+        await updateTaskEmbed(intr, msg_id, embed)
+
+
+    #-#-#-// Add_Step //-#-#-#
+
+    @app_commands.command()
+    async def create_step(self, intr :discord.Interaction, id :int, name :str, index: int = 0, status :bool = False):
+
+        client = self.client
+
+        c: asql.Cursor = await client.db.cursor()
+
+        await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
+        steps = (await c.fetchone())[0]
+
+        steps = createJSONSteps(steps, name, status, index)
+
+        await c.execute("UPDATE tasks SET steps = ? WHERE id = ? RETURNING msg_id;", [steps, id])
+        msg_id = (await c.fetchone())[0]
+
+        await client.db.commit()
+        await c.close()
+
+        await intr.response.send_message(f"```yaml\n Created a step for task {id}!```")
+
+        embed = await getTaskEmbedFromID(id)
+        await updateTaskEmbed(intr, msg_id, embed)
+
+
+    #-#-#-// Update Step //-#-#-#
+
+    @app_commands.command()
+    async def update_step(self, intr :discord.Interaction, task_id :int, step_index :int, new_name :str):
+
+        client = self.client
+
+        id=task_id
+        index=step_index-1 # need -1, idk why
+
+
+        c: asql.Cursor = await client.db.cursor()
+
+        await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
+        steps = (await c.fetchone())[0]
+        
+        steps_dict = json.loads(steps)
+        step = steps_dict["steps"][index]
+
+        #print(step)
+        step['name'] = new_name
+        #print(step)
+        steps_dict["steps"][index] = step
+
+        await c.execute("UPDATE tasks SET steps = ? WHERE id = ? RETURNING msg_id;", [json.dumps(steps_dict), id])
+        msg_id = (await c.fetchone())[0]
+
+        await client.db.commit()
+        await c.close()
+
+        await intr.response.send_message(f"```yaml\n Updated step {step_index} in task {task_id}!```")
+
+        embed = await getTaskEmbedFromID(id)
+        await updateTaskEmbed(intr, msg_id, embed)
+
+
+    #-#-#-// get db //-#-#-#
+
+    @app_commands.command(description='get the database (debug)', guild = debug_guild)
+    async def get_db(self, intr :discord.Interaction):
+
+        await intr.response.send_message('',file=discord.File('main.db'))
