@@ -137,7 +137,7 @@ def createJSONSteps(json_str: str | None, step_name: str, step_status: bool, ind
     return json.dumps(steps)
 
 
-def createTable(keys :list, values :list):
+def createTable(keys :list, values :list, used_char_amount :int) -> str:
 
     horizontal_count = [len(key) for key in keys]
 
@@ -167,20 +167,37 @@ def createTable(keys :list, values :list):
         if i == len(keys) - 1: divider += "-|"
         else: divider += "-|-"
 
+    available_char_count = 2000 - (2 + used_char_amount + len(table) + len(divider))
+    print(available_char_count)
+
     value_rows = "\n"
     for value_tuple in values:
         for value in value_tuple:
+
             i = value_tuple.index(value)
             value = str(value)
 
-            value_rows += value
-            for o in range(horizontal_count[i] - len(value)): value_rows += " "
-            value_rows += " | "
+            value_row = ""
 
+            value_row += value
+            for o in range(horizontal_count[i] - len(value)): value_row += " "
+            value_row += " | "
+
+            if available_char_count >= len(value_row): 
+
+                value_rows += value_row
+                available_char_count -= len(value_row)
+                continue
+
+            break
+
+        if available_char_count < 2: break
+        available_char_count -= 2
         value_rows += "\n"
 
     table += divider + value_rows
 
+    print(len(table))
     return table
 
 
@@ -359,7 +376,7 @@ async def list_tasks(intr: discord.Interaction):
         new_tasks.append([task[0], task[1], task[2], status])
 
 
-    response_msg += createTable(["ids", "task_name", "message_ids", "status"], new_tasks)
+    response_msg += createTable(["ids", "task_name", "message_ids", "status"], new_tasks, len(response_msg + "```"))
 
     await intr.response.defer()
     await intr.followup.send(response_msg +"```")

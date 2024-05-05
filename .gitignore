@@ -3,3 +3,7 @@
 
 # Bot's database
 main.db
+
+# Testing grounds
+test.py
+test.txt
