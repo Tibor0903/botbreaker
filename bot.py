@@ -39,6 +39,7 @@ class Bot(commands.Bot):
 
         # Slash Commands        
         await self.load_extension("cogs.tasks")
+        await self.load_extension("cogs.debug")
 
         # This syncs commands with the debug guild on each run
         self.tree.copy_global_to(guild = self.debug_guild)

@@ -1,4 +1,4 @@
-import os, aiosqlite as asql
+import aiosqlite as asql
 
 from utils.functions import *
 from utils.task_embed import TaskEmbed
@@ -6,13 +6,6 @@ from utils.task_embed import TaskEmbed
 import discord
 from discord import app_commands
 from discord.ext import commands
-
-from dotenv import load_dotenv
-load_dotenv()
-
-
-debug_guild_id = os.getenv("debug_guild_id")
-debug_guild = discord.Object(debug_guild_id)
 
 
 async def setup(client :commands.Bot):
@@ -238,12 +231,3 @@ class tasks(commands.Cog):
 
         embed = await getTaskEmbedFromID(id)
         await updateTaskEmbed(intr, msg_id, embed)
-
-
-    #-#-#-// get db //-#-#-#
-
-    @app_commands.command(description='get the database (debug)')
-    @app_commands.guilds(debug_guild)
-    async def get_db(self, intr :discord.Interaction):
-
-        await intr.response.send_message('',file=discord.File('main.db'))
