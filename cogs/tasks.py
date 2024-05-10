@@ -110,8 +110,9 @@ class tasks(commands.Cog):
             if new_status is not None:
                 await c.execute("UPDATE tasks SET status =? WHERE id =?;", [new_status, id])
 
-        print(task_info)
-        await intr.response.send_message("console")
+        embed = await getTaskEmbedFromID(self.client, id)
+
+        await intr.response.send_message("", embed=embed)
 
         
     #-#-#-// Show_Task //-#-#-#

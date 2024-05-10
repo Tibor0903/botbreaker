@@ -87,7 +87,6 @@ def createTable(keys :list, values :list, used_char_amount :int) -> str:
         else: divider += "-|-"
 
     available_char_count = 2000 - (2 + used_char_amount + len(table) + len(divider))
-    print(available_char_count)
 
     value_rows = "\n"
     for value_tuple in values:
@@ -116,5 +115,4 @@ def createTable(keys :list, values :list, used_char_amount :int) -> str:
 
     table += divider + value_rows
 
-    print(len(table))
     return table

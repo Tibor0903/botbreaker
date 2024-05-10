@@ -3,6 +3,7 @@
 
 # Bot's database
 main.db
+main.db-journal
 
 # Testing grounds
 test.py
