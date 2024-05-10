@@ -1,0 +1,36 @@
+@client.tree.command()
+async def list_tasks(intr: discord.Interaction, show_more :bool = False):
+    
+    c: asql.Cursor = await client.db.cursor()
+    response_msg = "```yaml\n Here's a list of tasks!```"
+
+    async with c:
+        await c.execute("SELECT id FROM tasks;")
+        tasks_ids = await c.fetchall()
+
+    embeds = []
+    second_embeds = []
+    for task_id in tasks_ids:
+
+        i = tasks_ids.index(task_id) + 1
+
+        if i <= 10:
+            embeds.append((await getTaskEmbedFromID(task_id[0])))
+            continue
+
+        second_embeds.append((await getTaskEmbedFromID(task_id[0])))
+
+    await intr.response.send_message(response_msg, embeds = embeds)
+
+    if not show_more: return
+
+    additional_list = []
+    second_embeds_len = len(second_embeds)
+    for embed in second_embeds:
+        i = second_embeds.index(embed) + 1
+
+        additional_list.append(embed)
+        if i % 10 == 0 or i == second_embeds_len:
+
+            await intr.channel.send(embeds=additional_list)
+            additional_list = []

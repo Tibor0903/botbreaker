@@ -1,1 +1,15 @@
-config.py
+# Stores tokens and debug guild id
+.env
+
+# Bot's database
+main.db
+main.db-journal
+
+# Testing grounds
+test.py
+test.txt
+
+# Cache
+__pycache__
+cogs/__pycache__
+utils/__pycache__
