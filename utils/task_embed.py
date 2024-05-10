@@ -32,7 +32,7 @@ class TaskEmbed(ds_Embed):
                 status_str = "Finished :white_check_mark:" if step["status"] else "In progress :blue_square:"
                 if deleted: status_str = ":x:"
 
-                description += f"{str(i+1)}. {step["name"]}: {status_str}\n"
+                description += f"{str(i+1)}. {step['name']}: {status_str}\n"
                 i += 1
 
         if assigned_peeps:
