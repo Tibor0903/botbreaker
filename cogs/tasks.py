@@ -86,7 +86,26 @@ class tasks(commands.Cog):
         embed = TaskEmbed(id=id, task_name=name, task_dpt=dpt, deleted=True, steps=steps, assigned_peeps=people)
 
         await updateTaskEmbed(intr, msg_id, embed)
-        
+
+
+    #-#-#-#-#-#-#-// Update_Task //-#-#-#-#-#-#-#
+
+    @app_commands.command(description="Updates a chosen task")
+    @app_commands.rename(new_dpt_name="new_department_name", new_status="finished")
+    @app_commands.describe(id="id of the task you want to update", new_task_name="new task name", new_dpt_name="new department name",
+                           new_status="task is now finished or not")
+    async def update_task(self, intr :discord.Interaction, id :int, new_task_name :str = None, new_dpt_name :str = None, new_status :bool = None):
+
+        client = self.client
+        c :asql.Cursor = await client.db.cursor()
+
+        async with c:
+            await c.execute("SELECT * FROM tasks WHERE id = ?;", [id])
+            task_info = await c.fetchone()
+
+        print(task_info)
+        await intr.response.send_message("console")
+
         
     #-#-#-// Show_Task //-#-#-#
 
