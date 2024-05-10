@@ -103,6 +103,13 @@ class tasks(commands.Cog):
             await c.execute("SELECT * FROM tasks WHERE id = ?;", [id])
             task_info = await c.fetchone()
 
+            if new_dpt_name:
+                await c.execute("UPDATE tasks SET department_name =? WHERE id =?;", [new_dpt_name, id])
+            if new_task_name:                                                                           # theres probably a better way of doing this, oh well
+                await c.execute("UPDATE tasks SET task_name =? WHERE id =?;", [new_task_name, id])
+            if new_status is not None:
+                await c.execute("UPDATE tasks SET status =? WHERE id =?;", [new_status, id])
+
         print(task_info)
         await intr.response.send_message("console")
 
@@ -149,12 +156,12 @@ class tasks(commands.Cog):
         new_tasks = []
         for task in tasks:
 
-            status = "Finished" if task[3] else "In Process"
+            status = "Finished" if task[3] else "In Progress"
 
-            new_tasks.append([task[0], task[1], task[2], status])
+            new_tasks.append([task[0], task[1], status])
 
 
-        response_msg += createTable(["ids", "task_name", "message_ids", "status"], new_tasks, len(response_msg + "```"))
+        response_msg += createTable(["ids", "task_name", "status"], new_tasks, len(response_msg + "```"))
 
         await intr.response.defer()
         await intr.followup.send(response_msg +"```")

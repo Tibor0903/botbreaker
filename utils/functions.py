@@ -34,7 +34,7 @@ async def updateTaskEmbed(intr :discord.Interaction, msg_id :int, embed :discord
     for channel in intr.guild.channels:
         if type(channel) != discord.TextChannel: continue
 
-        msg = await channel.fetch_message(msg_id)
+        msg = await channel.fetch_message(msg_id) # throws 404 (still works but should probably fix)
         await msg.edit(embed = embed)
 
 
