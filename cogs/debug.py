@@ -29,3 +29,15 @@ class debug_commands(commands.Cog):
     async def get_db(self, intr :discord.Interaction):
 
         await intr.response.send_message(file=discord.File('main.db'))
+
+    @app_commands.command(description="Info about the server the bot's running on")
+    async def server_info(self, intr :discord.Interaction):
+        if os.getlogin() == 'tibor0903' or 'pi': # server
+            temperature = os.popen('vcgencmd measure_temp').read()
+            temperature = temperature[temperature.index('=') + 1:-2]
+            embed=discord.Embed(title="Server Info")
+            embed.add_field(name="Host", value=os.getlogin(), inline=False)
+            embed.add_field(name="Temperature", value=temperature, inline=False)
+            await intr.response.send_message(embed=embed)
+        else:
+            await intr.response.send_message('running on test server, unavaliable')
