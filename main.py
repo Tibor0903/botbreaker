@@ -14,9 +14,9 @@ load_dotenv()
 
 sys_message_divider = "---------------"
 
-production_token = "0"
-test_token = os.getenv("test_token")
-debug_guild_id = os.getenv("debug_guild_id")
+production_token = os.getenv("prod_token")
+test_token       = os.getenv("test_token")
+debug_guild_id   = os.getenv("debug_guild_id")
 
 intents = Intents().default()
 intents.members = True
