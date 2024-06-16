@@ -70,3 +70,20 @@ class Bot(commands.Bot):
         print(Fore.RED+f"{sys_message_divider}\n")
         print(f"The bot has disconnected at {getCurrentTime()}!")
         print(f"\n{sys_message_divider}"+Style.RESET_ALL)
+
+
+if __name__ == "__main__":
+
+    from os import getenv
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    test_token     = getenv("test_token")
+    debug_guild_id = getenv("debug_guild_id")
+
+    intents = discord.Intents().default()
+    intents.members = True
+    intents.message_content = True
+
+    bot = Bot("/", intents, debug_guild_id)
+    bot.run(test_token)
