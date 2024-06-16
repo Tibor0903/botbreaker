@@ -2,7 +2,7 @@ import aiosqlite as asql
 
 from utils.functions import *
 from utils.task_embed import TaskEmbed
-from utils.buttons import TaskCreationButtons
+from utils import buttons as view_buttons
 
 import discord
 from discord import app_commands
@@ -55,7 +55,7 @@ class tasks(commands.Cog):
 
         if similar_task_exists:
 
-            buttons = TaskCreationButtons(id, name, dpt, finished, client)
+            buttons = view_buttons.TaskCreationButtons(id, name, dpt, finished, client)
 
             await intr.response.send_message(response_msg, view=buttons, ephemeral=True)
             await c.close()
@@ -85,23 +85,22 @@ class tasks(commands.Cog):
         c: asql.Cursor = await client.db.cursor()
 
         async with c:
-            await c.execute("SELECT * FROM tasks WHERE id = ?;", [id])
-            
-            if (await c.fetchone()) is None: await c.close(); return
+            await c.execute("SELECT task_name, department_name FROM tasks WHERE id = ?;", [id])
 
-            await c.execute("DELETE FROM tasks WHERE id = ? RETURNING *;", [id])
-            task_values = await c.fetchone()
-            await client.db.commit()
+            items = await c.fetchone()
+            if items is None: 
 
-        await intr.response.send_message(f"```yaml\n Deleted task under id {id}.```")
+                await intr.response.send_message(f"Couldn't find the task under id {id}", ephemeral=True)
+                await c.close(); return
 
-        msg_id = task_values[1]
-        name, dpt = task_values[3], task_values[2]
-        steps, people = task_values[6], task_values[5]
+            task_name, dpt_name = items[0], items[1]
 
-        embed = TaskEmbed(id=id, task_name=name, task_dpt=dpt, deleted=True, steps=steps, assigned_peeps=people)
+        buttons = view_buttons.TaskDeletionButtons(id, client)
 
-        await updateTaskEmbed(intr, msg_id, embed)
+        await intr.response.send_message((f"Do you want to delete the task (id: {id})?\n"
+                                          f"```Department(s): {dpt_name}\n"
+                                          f"Task Name: {task_name}```"),
+                                          view=buttons)
 
 
     #-#-#-#-#-#-#-// Update_Task //-#-#-#-#-#-#-#

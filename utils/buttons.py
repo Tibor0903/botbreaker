@@ -1,4 +1,5 @@
 import discord
+from aiosqlite import Cursor
 from utils.task_embed import TaskEmbed
 
 
@@ -51,8 +52,42 @@ class TaskCreationButtons(discord.ui.View):
         button.disabled = True
         await intr.response.edit_message(view=self)
 
-        c = await self.db_client.db.cursor()
+        c :Cursor = await self.db_client.db.cursor()
         async with c:
 
             await c.execute("DELETE FROM tasks WHERE id = ?;", [self.id])
             await self.db_client.db.commit()
+
+
+
+class TaskDeletionButtons(discord.ui.View):
+
+    def __init__(self, id :int, client, timeout = 180):
+        super().__init__(timeout=timeout)
+
+        self.id = id
+        self.db_client = client
+
+    
+    @discord.ui.button(label="No", style=discord.ButtonStyle.gray)
+    async def cancel_button(self, intr :discord.Interaction, button :discord.ui.Button):
+        
+        self.clear_items()
+        await intr.response.edit_message(view=self)
+        await intr.channel.send(content="Task deletion has been canceled!")
+
+
+    @discord.ui.button(label="Yes, delete the task", style=discord.ButtonStyle.danger)
+    async def deletion_button(self, intr :discord.Interaction, button :discord.ui.Button):
+
+        client = self.db_client
+        
+        c :Cursor = await client.db.cursor()
+        async with c:
+
+            await c.execute("DELETE FROM tasks WHERE id = ?;", [self.id])
+            await client.db.commit()
+
+        self.clear_items()
+        await intr.response.edit_message(view=self)
+        await intr.channel.send(content="Task has been successfully deleted!")
