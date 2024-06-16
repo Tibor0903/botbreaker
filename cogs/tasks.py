@@ -2,6 +2,7 @@ import aiosqlite as asql
 
 from utils.functions import *
 from utils.task_embed import TaskEmbed
+from utils.buttons import TaskCreationButtons
 
 import discord
 from discord import app_commands
@@ -25,30 +26,45 @@ class tasks(commands.Cog):
     @app_commands.command(description="Creates a task")
     @app_commands.rename(dpt="department_name", name="task_name")
     @app_commands.describe(dpt="the department's name", name="task's name (animate something, code something, etc.)",
-                        hide_reply="hides a reply to the command (also doesn't show who ran the command)")
-    async def create_task(self, intr :discord.Interaction, dpt :str, name :str, hide_reply :bool = False):
+                        finished="shows if the task is finished or not")
+    async def create_task(self, intr :discord.Interaction, dpt :str, name :str, finished :bool = False):
 
         client = self.client
+        response_msg = "Created task!"
 
         c: asql.Cursor = await client.db.cursor()
-        response_msg = "```yaml\n Created a task!```"
+
 
         await c.execute("SELECT id FROM tasks WHERE department_name = ? AND task_name = ?;", [dpt, name])
 
         similar_task = await c.fetchone()
-        if not (similar_task is None) and len(similar_task): # If the task doesn't exist, the len is 0 (False)
+        similar_task_exists = not (similar_task is None) and len(similar_task) # If the task doesn't exist, the len is 0 (False)
+        if similar_task_exists:
 
-            response_msg = f"```prolog\n WARNING: similar task already exists! id: {similar_task[0]}```"
+            response_msg = (f"Similar task already exists! (id: {similar_task[0]})\n"
+                            "Do you still want to create the task?")
     
+
         await c.execute(("INSERT INTO tasks (department_name, task_name, status) VALUES (?, ?, ?)"
                             "RETURNING id;"), [dpt, name, False])
             
         id = (await c.fetchone())[0]
 
         await client.db.commit()
-        await intr.response.send_message(response_msg, ephemeral=hide_reply)
+        
 
-        embed = TaskEmbed(id=id, task_name=name, task_dpt=dpt)
+        if similar_task_exists:
+
+            buttons = TaskCreationButtons(id, name, dpt, finished, client)
+
+            await intr.response.send_message(response_msg, view=buttons, ephemeral=True)
+            await c.close()
+            return
+
+
+        await intr.response.send_message(response_msg, ephemeral=True)
+
+        embed = TaskEmbed(id=id, task_name=name, task_dpt=dpt, finished=finished)
         msg = await intr.channel.send(embed=embed)
         
         await c.execute("UPDATE tasks SET msg_id = ? WHERE id = ?;", [msg.id, id])
