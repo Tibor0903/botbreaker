@@ -1,12 +1,27 @@
 from utils.functions import *
 
-import discord, aiosqlite as asql
+import discord, os, aiosqlite as asql
 from discord.ext import commands
 
 from colorama import Style, Fore
 
 
 sys_message_divider = "---------------"
+
+
+def deleteFilesInFolder(folder_path :str):
+
+    for obj in os.listdir(folder_path):
+
+        obj = f"{folder_path}/{obj}"
+
+        if os.path.isfile(obj):
+
+            os.remove(obj)
+        else:
+
+            deleteFilesInFolder(obj)
+            os.rmdir(obj)
 
 
 class Bot(commands.Bot):
@@ -18,6 +33,11 @@ class Bot(commands.Bot):
 
 
     async def setup_hook(self) -> None:
+
+        # Cache cleaner
+
+        deleteFilesInFolder("app_cache")
+
 
         # Database loader
 
