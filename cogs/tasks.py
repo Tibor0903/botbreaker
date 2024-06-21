@@ -23,14 +23,15 @@ class tasks(commands.Cog):
     
     #-#-#-#-#-#-#-#-// Commands //-#-#-#-#-#-#-#-#
 
-    @app_commands.command(description="Creates a task")
+    @app_commands.command(description="Adds a task to the list")
     @app_commands.rename(dpt="department_name", name="task_name")
     @app_commands.describe(dpt="the department's name", name="task's name (animate something, code something, etc.)",
-                        finished="shows if the task is finished or not")
-    async def create_task(self, intr :discord.Interaction, dpt :str, name :str, finished :bool = False):
+                           finished="is the task finished or not")
+    async def add_task(self, intr :discord.Interaction, dpt :str, name :str, finished :bool = False):
 
         client = self.client
-        response_msg = "Created task!"
+        similar_task_response = ("Similar task already exists! (id: {id})\n"
+                                 "Do you still want to create the task?")
 
         c: asql.Cursor = await client.db.cursor()
 
@@ -38,38 +39,26 @@ class tasks(commands.Cog):
 
         similar_task = await c.fetchone()
         similar_task_exists = not (similar_task is None) and len(similar_task) # If the task doesn't exist, the len is 0 (False)
-        if similar_task_exists:
-
-            response_msg = (f"Similar task already exists! (id: {similar_task[0]})\n"
-                            "Do you still want to create the task?")
-    
-
-        await c.execute(("INSERT INTO tasks (department_name, task_name, status) VALUES (?, ?, ?)"
-                            "RETURNING id;"), [dpt, name, False])
-            
-        id = (await c.fetchone())[0]
-
-        await client.db.commit()
-        
 
         if similar_task_exists:
 
-            buttons = view_buttons.TaskCreationButtons(id, name, dpt, finished, client)
+            buttons = view_buttons.TaskCreationButtons(name, dpt, finished, client)
 
-            await intr.response.send_message(response_msg, view=buttons, ephemeral=True)
+            await intr.response.send_message(similar_task_response.format(id = similar_task[0]), view=buttons, ephemeral=True)
             await c.close()
             return
 
 
-        await intr.response.send_message(response_msg, ephemeral=True)
-
-        embed = TaskEmbed(id, name, dpt, finished)
-        msg = await intr.channel.send(embed=embed)
-        
-        await c.execute("UPDATE tasks SET msg_id = ? WHERE id = ?;", [msg.id, id])
+        await c.execute(("INSERT INTO tasks (department_name, task_name, status) VALUES (?, ?, ?)"
+                            "RETURNING id;"), [dpt, name, finished])
+            
+        id = (await c.fetchone())[0]
 
         await client.db.commit()
         await c.close()
+        
+        embed = TaskEmbed(id, name, dpt, finished)
+        await intr.response.send_message(embed=embed)
 
 
     #-#-#-// Delete_Task //-#-#-#
