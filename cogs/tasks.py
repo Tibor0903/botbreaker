@@ -9,6 +9,9 @@ from discord import app_commands
 from discord.ext import commands
 
 
+task_404 = "Task under id {id} doesn't exist or the bot couldn't find it"
+
+
 async def setup(client :commands.Bot):
 
     await client.add_cog(tasks(client))
@@ -79,7 +82,7 @@ class tasks(commands.Cog):
             items = await c.fetchone()
             if items is None: 
 
-                await intr.response.send_message(f"Couldn't find a task under id {id}", ephemeral=True)
+                await intr.response.send_message(task_404.format(id=id), ephemeral=True)
                 await c.close(); return
             
 
@@ -105,7 +108,7 @@ class tasks(commands.Cog):
             await c.execute("SELECT task_name, department_name, status FROM tasks WHERE id = ?;", [id])
             task_info = await c.fetchone()
 
-            if task_info is None: await intr.response.send_message(f"Couldn't find a task under id {id}"); return
+            if task_info is None: await intr.response.send_message(task_404.format(id=id)); return
 
             # (previous comment) theres probably a better way of doing this, oh well
             # tbh, i didn't make this code better cuz it technically stayed the same
