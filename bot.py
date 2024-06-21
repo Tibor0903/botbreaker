@@ -31,7 +31,7 @@ class Bot(commands.Bot):
                         "department_name STRING, "
                         "task_name STRING, "
                         "status BOOLEAN, "
-                        "assigned_people JSON, "
+                        "assigned_people STRING, "
                         "steps JSON);"
                         ))
             
