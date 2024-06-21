@@ -121,7 +121,7 @@ class tasks(commands.Cog):
 
             if new_dpt_name:
                 await c.execute("UPDATE tasks SET department_name =? WHERE id =?;", [new_dpt_name, id])
-            if new_task_name:                                                                           # theres probably a better way of doing this, oh well
+            if new_task_name:
                 await c.execute("UPDATE tasks SET task_name =? WHERE id =?;", [new_task_name, id])
             if new_status is not None:
                 await c.execute("UPDATE tasks SET status =? WHERE id =?;", [new_status, id])
@@ -259,9 +259,7 @@ class tasks(commands.Cog):
         steps_dict = json.loads(steps)
         step = steps_dict["steps"][index]
 
-        #print(step)
         step['name'] = new_name
-        #print(step)
         steps_dict["steps"][index] = step
 
         await c.execute("UPDATE tasks SET steps = ? WHERE id = ? RETURNING msg_id;", [json.dumps(steps_dict), id])
