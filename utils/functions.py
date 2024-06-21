@@ -10,7 +10,7 @@ def getCurrentTime() -> str:
     return time.strftime("%d/%m/%Y %H:%M:%S GMT", time.gmtime())
 
 
-async def getTaskEmbedFromID(client, id :int):
+async def getTaskEmbedFromID(client, id :int, deleted :bool = False):
 
     c :asql.Cursor = await client.db.cursor()
 
@@ -20,11 +20,11 @@ async def getTaskEmbedFromID(client, id :int):
 
     if not values: return None
 
-    task_name, dpt_name = values[3], values[2]
-    status = True if values[4] else False
-    steps, assigned_people = values[6], values[5]
+    task_name, dpt_name = values[2], values[1]
+    status = values[3]
+    steps, assigned_people = values[4], values[5]
 
-    embed = TaskEmbed(id, task_name, dpt_name, status, steps, assigned_people)
+    embed = TaskEmbed(id, task_name, dpt_name, status, deleted, steps, assigned_people)
 
     return embed
 
