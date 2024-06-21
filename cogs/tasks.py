@@ -146,32 +146,53 @@ class tasks(commands.Cog):
 
     #-#-#-// List_Tasks //-#-#-#
 
-    @app_commands.command()
-    async def list_tasks(self, intr: discord.Interaction):
+    @app_commands.command(description="Lists every tasks or tasks, assigned to specific people")
+    @app_commands.describe(member = 'Member, whose tasks you want to see (if "member" and "all" are skipped, it selects you)', 
+                           all = "If True, you'll see every task on the server at the moment",
+                           sort = "Sorts in alphabetic order")
+    async def list_tasks(self, intr: discord.Interaction, member: discord.User = None, all: bool = None, sort: bool = True):
 
-        client = self.client
-        
-        c :asql.Cursor = await client.db.cursor()
-        response_msg = ("```yaml\n Here's a list of tasks!```\n"
-                        "```\n")
-        
+        c :asql.Cursor = await self.client.db.cursor()
+
+        if not member and not all: member = intr.user
+
+        if member:
+
+            member_command = f"WHERE assigned_people LIKE '%{member.id}%'"
+        else:
+
+            member_command = ""
+
+        order_command = "ORDER BY department_name"
+        if not sort: order_command = ""
+
         async with c:
-            await c.execute("SELECT id, task_name, msg_id, status FROM tasks;")
-            tasks = await c.fetchall()
 
-        new_tasks = []
-        for task in tasks:
+            await c.execute(f"SELECT id, department_name, task_name, status FROM tasks {member_command} {order_command};")
+            
+            rows = await c.fetchall()
 
-            status = "Finished" if task[3] else "In Progress"
+            if not len(rows): 
+                
+                await intr.response.send_message("The server doesn't have any tasks or you don't have any assigned tasks")
+                return
+            
+            tasks = []
+            for task in rows:
 
-            new_tasks.append([task[0], task[1], status])
+                status = "Done" if task[3] else "In process"
+
+                tasks.append([task[0], task[1], task[2], status])
 
 
-        response_msg += createTable(["ids", "task_name", "status"], new_tasks, len(response_msg + "```"))
+        await intr.response.defer(thinking=True)
 
-        await intr.response.defer()
-        await intr.followup.send(response_msg +"```")
+        columns = ["IDs", "Department(s)", "Tasks", "Status"]
 
+        table = createTable(columns, tasks)
+
+        await intr.followup.send(file=table)
+        
     
     #-#-#-// Assign_People //-#-#-#
 
