@@ -61,34 +61,32 @@ class tasks(commands.Cog):
         await intr.response.send_message(embed=embed)
 
 
-    #-#-#-// Delete_Task //-#-#-#
+    #-#-#-// Remove_Task //-#-#-#
 
-    @app_commands.command(description="Deletes a chosen task")
-    @app_commands.rename(id="task_id")
-    @app_commands.describe(id="id of the task you want to delete")
-    async def delete_task(self, intr: discord.Interaction, id: int):
+    @app_commands.command(description="Removes/deletes a chosen task")
+    @app_commands.rename  (id="task_id")
+    @app_commands.describe(id="id of the task you want to remove")
+    async def remove_task(self, intr: discord.Interaction, id: int):
 
         client = self.client
 
         c: asql.Cursor = await client.db.cursor()
 
         async with c:
+
             await c.execute("SELECT task_name, department_name FROM tasks WHERE id = ?;", [id])
 
             items = await c.fetchone()
             if items is None: 
 
-                await intr.response.send_message(f"Couldn't find the task under id {id}", ephemeral=True)
+                await intr.response.send_message(f"Couldn't find a task under id {id}", ephemeral=True)
                 await c.close(); return
+            
 
-            task_name, dpt_name = items[0], items[1]
-
+        embed   = await getTaskEmbedFromID(client, id)
         buttons = view_buttons.TaskDeletionButtons(id, client)
 
-        await intr.response.send_message((f"Do you want to delete the task (id: {id})?\n"
-                                          f"```Department(s): {dpt_name}\n"
-                                          f"Task Name: {task_name}```"),
-                                          view=buttons)
+        await intr.response.send_message(f"Do you really want to remove this task?", embed=embed, view=buttons)
 
 
     #-#-#-#-#-#-#-// Update_Task //-#-#-#-#-#-#-#

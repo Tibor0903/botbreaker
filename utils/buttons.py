@@ -1,6 +1,8 @@
 import discord
 from aiosqlite import Cursor
+
 from utils.task_embed import TaskEmbed
+from utils.functions import getTaskEmbedFromID
 
 
 
@@ -55,8 +57,7 @@ class TaskDeletionButtons(discord.ui.View):
     async def cancel_button(self, intr :discord.Interaction, button :discord.ui.Button):
         
         self.clear_items()
-        await intr.response.edit_message(view=self)
-        await intr.channel.send(content="Task deletion has been canceled!")
+        await intr.response.edit_message(content= f"Task (id: {self.id}) removal has been canceled", view=self)
 
 
     @discord.ui.button(label="Yes, delete the task", style=discord.ButtonStyle.danger)
@@ -64,12 +65,13 @@ class TaskDeletionButtons(discord.ui.View):
 
         client = self.db_client
         
+        self.clear_items()
+
+        embed = await getTaskEmbedFromID(client, self.id, True)
+        await intr.response.edit_message(content= f"Task (id: {self.id}) has been successfully removed", embed=embed, view=self)
+
         c :Cursor = await client.db.cursor()
         async with c:
 
             await c.execute("DELETE FROM tasks WHERE id = ?;", [self.id])
             await client.db.commit()
-
-        self.clear_items()
-        await intr.response.edit_message(view=self)
-        await intr.channel.send(content="Task has been successfully deleted!")
