@@ -64,7 +64,7 @@ class tasks(commands.Cog):
 
         await intr.response.send_message(response_msg, ephemeral=True)
 
-        embed = TaskEmbed(id=id, task_name=name, task_dpt=dpt, finished=finished)
+        embed = TaskEmbed(id, name, dpt, finished)
         msg = await intr.channel.send(embed=embed)
         
         await c.execute("UPDATE tasks SET msg_id = ? WHERE id = ?;", [msg.id, id])
@@ -210,7 +210,6 @@ class tasks(commands.Cog):
         await intr.response.send_message(f"Assigned {user.mention} to Task{id}!", ephemeral=True)
 
         embed = await getTaskEmbedFromID(id)
-        await updateTaskEmbed(intr, msg_id, embed)
 
 
     #-#-#-// Add_Step //-#-#-#
@@ -235,8 +234,7 @@ class tasks(commands.Cog):
 
         await intr.response.send_message(f"```yaml\n Created a step for task {id}!```")
 
-        embed = await getTaskEmbedFromID(id)
-        await updateTaskEmbed(intr, msg_id, embed)
+        embed = await getTaskEmbedFromID(client, id)
 
 
     #-#-#-// Update Step //-#-#-#
@@ -272,4 +270,3 @@ class tasks(commands.Cog):
         await intr.response.send_message(f"```yaml\n Updated step {step_index} in task {task_id}!```")
 
         embed = await getTaskEmbedFromID(id)
-        await updateTaskEmbed(intr, msg_id, embed)
