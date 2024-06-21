@@ -108,7 +108,7 @@ class tasks(commands.Cog):
             await c.execute("SELECT task_name, department_name, status FROM tasks WHERE id = ?;", [id])
             task_info = await c.fetchone()
 
-            if task_info is None: await intr.response.send_message(task_404.format(id=id)); return
+            if task_info is None: await intr.response.send_message(task_404.format(id=id), ephemeral=True); return
 
             # (previous comment) theres probably a better way of doing this, oh well
             # tbh, i didn't make this code better cuz it technically stayed the same
@@ -129,23 +129,19 @@ class tasks(commands.Cog):
     @app_commands.command()
     async def show_task(self, intr :discord.Interaction, id :int):
 
-        client = self.client
-
-        c :asql.Cursor = await client.db.cursor()
-        embed = await getTaskEmbedFromID(self.client, id)
-
-        if not embed:
-
-            await intr.response.send_message(f"```ml\n ERROR: task doesn't exist```")
-            return
-
-        await intr.response.send_message(embed = embed)
-
-        msg = await intr.original_response()
+        c :asql.Cursor = await self.client.db.cursor()
 
         async with c:
-            await c.execute("UPDATE tasks SET msg_id = ? WHERE id = ?", [msg.id, id])
-            await client.db.commit()
+
+            await c.execute("SELECT * FROM tasks WHERE id = ?;", [id])
+            if (await c.fetchone())[0] is None: 
+                
+                await intr.response.send_message(task_404.format(id=id), ephemeral=True)
+                return
+            
+            
+        embed = await getTaskEmbedFromID(self.client, id)
+        await intr.response.send_message(embed=embed)
 
 
     #-#-#-// List_Tasks //-#-#-#
