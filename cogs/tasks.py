@@ -102,17 +102,20 @@ class tasks(commands.Cog):
 
         async with c:
 
-            await c.execute("SELECT * FROM tasks WHERE id = ?;", [id])
+            await c.execute("SELECT task_name, department_name, status FROM tasks WHERE id = ?;", [id])
             task_info = await c.fetchone()
 
-            if new_dpt_name:
-                await c.execute("UPDATE tasks SET department_name =? WHERE id =?;", [new_dpt_name, id])
+            if task_info is None: await intr.response.send_message(f"Couldn't find a task under id {id}"); return
 
-            if new_task_name:                                                                           # theres probably a better way of doing this, oh well
-                await c.execute("UPDATE tasks SET task_name =? WHERE id =?;", [new_task_name, id])
+            # (previous comment) theres probably a better way of doing this, oh well
+            # tbh, i didn't make this code better cuz it technically stayed the same
 
-            if new_status is not None:
-                await c.execute("UPDATE tasks SET status =? WHERE id =?;", [new_status, id])
+            if new_task_name is None: new_task_name = task_info[0]
+            if new_dpt_name  is None: new_dpt_name  = task_info[1]
+            if new_status    is None: new_status    = task_info[2]
+
+            await c.execute("UPDATE tasks SET task_name = ?, department_name = ?, status = ? WHERE id = ?;", [new_task_name, new_dpt_name, new_status, id])
+            await client.db.commit()
 
         embed = await getTaskEmbedFromID(self.client, id)
         await intr.response.send_message(embed=embed)
