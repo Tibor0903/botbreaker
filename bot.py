@@ -59,6 +59,7 @@ class Bot(commands.Bot):
     async def on_resumed(self):
 
         await self.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
+        
         print(Fore.GREEN+f"{sys_message_divider}\n")
         print(f"The bot has resumed session at {getCurrentTime()}!")
         print(f"\n{sys_message_divider}"+Style.RESET_ALL)

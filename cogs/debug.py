@@ -84,7 +84,7 @@ class debug_commands(commands.Cog):
                 data = json.loads(row[0])
                 data = data["user_ids"]
 
-                data = str(data)[1:-1]            # Removes brackets
+                data = str(data)[1:-1]                # Removes brackets
                 data = str.join("", data.split(" "))  # Removes spaces
 
                 await c.execute("UPDATE tasks SET assigned_people = ? WHERE id = ?;", [data, row[1]])

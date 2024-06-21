@@ -34,7 +34,6 @@ class tasks(commands.Cog):
 
         c: asql.Cursor = await client.db.cursor()
 
-
         await c.execute("SELECT id FROM tasks WHERE department_name = ? AND task_name = ?;", [dpt, name])
 
         similar_task = await c.fetchone()
@@ -115,19 +114,21 @@ class tasks(commands.Cog):
         c :asql.Cursor = await client.db.cursor()
 
         async with c:
+
             await c.execute("SELECT * FROM tasks WHERE id = ?;", [id])
             task_info = await c.fetchone()
 
             if new_dpt_name:
                 await c.execute("UPDATE tasks SET department_name =? WHERE id =?;", [new_dpt_name, id])
+
             if new_task_name:                                                                           # theres probably a better way of doing this, oh well
                 await c.execute("UPDATE tasks SET task_name =? WHERE id =?;", [new_task_name, id])
+
             if new_status is not None:
                 await c.execute("UPDATE tasks SET status =? WHERE id =?;", [new_status, id])
 
         embed = await getTaskEmbedFromID(self.client, id)
-
-        await intr.response.send_message("", embed=embed)
+        await intr.response.send_message(embed=embed)
 
         
     #-#-#-// Show_Task //-#-#-#
@@ -209,8 +210,6 @@ class tasks(commands.Cog):
         
         await intr.response.send_message(f"Assigned {user.mention} to Task{id}!", ephemeral=True)
 
-        embed = await getTaskEmbedFromID(id)
-
 
     #-#-#-// Add_Step //-#-#-#
 
@@ -234,8 +233,6 @@ class tasks(commands.Cog):
 
         await intr.response.send_message(f"```yaml\n Created a step for task {id}!```")
 
-        embed = await getTaskEmbedFromID(client, id)
-
 
     #-#-#-// Update Step //-#-#-#
 
@@ -244,8 +241,8 @@ class tasks(commands.Cog):
 
         client = self.client
 
-        id=task_id
-        index=step_index-1 # need -1, idk why
+        id    = task_id
+        index = step_index - 1 # -1 is here because the first step must be zero, the second - one and so on
 
 
         c: asql.Cursor = await client.db.cursor()
@@ -256,9 +253,7 @@ class tasks(commands.Cog):
         steps_dict = json.loads(steps)
         step = steps_dict["steps"][index]
 
-        #print(step)
         step['name'] = new_name
-        #print(step)
         steps_dict["steps"][index] = step
 
         await c.execute("UPDATE tasks SET steps = ? WHERE id = ? RETURNING msg_id;", [json.dumps(steps_dict), id])
