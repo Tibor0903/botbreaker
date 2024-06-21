@@ -26,11 +26,11 @@ class tasks(commands.Cog):
     
     #-#-#-#-#-#-#-#-// Commands //-#-#-#-#-#-#-#-#
 
-    @app_commands.command(description="Adds a task to the list")
+    @app_commands.command(description="Creates a task to the list")
     @app_commands.rename(dpt="department_name", name="task_name")
     @app_commands.describe(dpt="the department's name", name="task's name (animate something, code something, etc.)",
                            finished="is the task finished or not")
-    async def add_task(self, intr :discord.Interaction, dpt :str, name :str, finished :bool = False):
+    async def create_task(self, intr :discord.Interaction, dpt :str, name :str, finished :bool = False):
 
         client = self.client
         similar_task_response = ("Similar task already exists! (id: {id})\n"
@@ -47,7 +47,7 @@ class tasks(commands.Cog):
 
             buttons = view_buttons.TaskCreationButtons(name, dpt, finished, client)
 
-            await intr.response.send_message(similar_task_response.format(id = similar_task[0]), view=buttons, ephemeral=True)
+            await intr.response.send_message(similar_task_response.format(id = similar_task[0]), view=buttons)
             await c.close()
             return
 
@@ -64,12 +64,12 @@ class tasks(commands.Cog):
         await intr.response.send_message(embed=embed)
 
 
-    #-#-#-// Remove_Task //-#-#-#
+    #-#-#-// Delete_Task //-#-#-#
 
-    @app_commands.command(description="Removes/deletes a chosen task")
+    @app_commands.command(description="Deletes a chosen task")
     @app_commands.rename  (id="task_id")
-    @app_commands.describe(id="id of the task you want to remove")
-    async def remove_task(self, intr: discord.Interaction, id: int):
+    @app_commands.describe(id="id of the task you want to delete")
+    async def delete_task(self, intr: discord.Interaction, id: int):
 
         client = self.client
 
@@ -82,14 +82,14 @@ class tasks(commands.Cog):
             items = await c.fetchone()
             if items is None: 
 
-                await intr.response.send_message(task_404.format(id=id), ephemeral=True)
+                await intr.response.send_message(task_404.format(id=id))
                 await c.close(); return
             
 
         embed   = await getTaskEmbedFromID(client, id)
         buttons = view_buttons.TaskDeletionButtons(id, client)
 
-        await intr.response.send_message(f"Do you really want to remove this task?", embed=embed, view=buttons)
+        await intr.response.send_message(f"Do you really want to delete this task?", embed=embed, view=buttons)
 
 
     #-#-#-#-#-#-#-// Update_Task //-#-#-#-#-#-#-#
@@ -108,7 +108,7 @@ class tasks(commands.Cog):
             await c.execute("SELECT task_name, department_name, status FROM tasks WHERE id = ?;", [id])
             task_info = await c.fetchone()
 
-            if task_info is None: await intr.response.send_message(task_404.format(id=id), ephemeral=True); return
+            if task_info is None: await intr.response.send_message(task_404.format(id=id)); return
 
             # (previous comment) theres probably a better way of doing this, oh well
             # tbh, i didn't make this code better cuz it technically stayed the same
@@ -136,10 +136,10 @@ class tasks(commands.Cog):
             await c.execute("SELECT * FROM tasks WHERE id = ?;", [id])
             if (await c.fetchone())[0] is None: 
                 
-                await intr.response.send_message(task_404.format(id=id), ephemeral=True)
+                await intr.response.send_message(task_404.format(id=id))
                 return
             
-            
+
         embed = await getTaskEmbedFromID(self.client, id)
         await intr.response.send_message(embed=embed)
 
