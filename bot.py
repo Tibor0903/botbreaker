@@ -27,7 +27,6 @@ class Bot(commands.Bot):
         async with cursor as c:
             await c.execute(("CREATE TABLE IF NOT EXISTS tasks ("
                         "id INTEGER PRIMARY KEY, "
-                        "msg_id INTEGER, "
                         "department_name STRING, "
                         "task_name STRING, "
                         "status BOOLEAN, "
