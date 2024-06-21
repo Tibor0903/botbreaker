@@ -24,19 +24,9 @@ async def getTaskEmbedFromID(client, id :int):
     status = True if values[4] else False
     steps, assigned_people = values[6], values[5]
 
-    embed = TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps, assigned_peeps=assigned_people)
+    embed = TaskEmbed(id, task_name, dpt_name, status, steps, assigned_people)
 
     return embed
-
-
-async def updateTaskEmbed(intr :discord.Interaction, msg_id :int, embed :discord.Embed):
-
-    for channel in intr.guild.channels:
-        if type(channel) != discord.TextChannel: continue
-
-        msg = await channel.fetch_message(msg_id) # throws 404 (still works but should probably fix)
-        await msg.edit(embed = embed)
-
 
 
 def createJSONOfAssignedPeople(json_str: str | None, user: discord.User) -> str:
