@@ -9,7 +9,7 @@ from discord import app_commands
 from discord.ext import commands
 
 
-task_404 = "Task under id {id} doesn't exist or the bot couldn't find it"
+task_404 = "Task #{id} doesn't exist or the bot couldn't find it"
 
 
 async def setup(client :commands.Bot):
@@ -194,31 +194,48 @@ class tasks(commands.Cog):
         await intr.followup.send(file=table)
         
     
-    #-#-#-// Assign_People //-#-#-#
+    #-#-#-// Assign_Person //-#-#-#
 
     @app_commands.command(description="Assigns chosen user to a task")
     @app_commands.rename(id="task_id")
     @app_commands.describe(id="id of the task you want to assign the user to",
-                        user="the user you want to assign to the task (automatically selects you if skipped)")
-    async def assign_people(self, intr: discord.Interaction, id: int, user: discord.User = None):
+                           user="the user you want to assign to the task (automatically selects you if skipped)")
+    async def assign_person(self, intr: discord.Interaction, id: int, user: discord.User = None):
 
-        client = self.client
+        c: asql.Cursor = await self.client.db.cursor()
 
-        c: asql.Cursor = await client.db.cursor()
-        user = user if user else intr.user
+        if not user: user = intr.user
 
         await c.execute("SELECT assigned_people FROM tasks WHERE id = ?;", [id])
-        stored_assigned_people = (await c.fetchone())[0]
 
-        assigned_people = createJSONOfAssignedPeople(stored_assigned_people, user)
+        row = await c.fetchone()
+        if not row:
+            
+            await intr.response.send_message(task_404.format(id=id))
+            await c.close(); return
 
-        await c.execute("UPDATE tasks SET assigned_people = ? WHERE id = ? RETURNING msg_id;", [assigned_people, id])
-        msg_id = (await c.fetchone())[0]
+        old_asgn_people = row[0]
+        comma = ","
 
-        await client.db.commit()
+        if listFind(str(old_asgn_people).split(","), str(user.id)):
+
+            await intr.response.send_message(f"{user.display_name} is already assigned to Task #{id}")
+            await c.close(); return
+
+        if not old_asgn_people: 
+            
+            old_asgn_people = ""
+            comma = ""
+
+        new_asgn_people = str(old_asgn_people) + comma + str(user.id)
+
+        await c.execute("UPDATE tasks SET assigned_people = ? WHERE id = ?;", [new_asgn_people, id])
+
+        await self.client.db.commit()
         await c.close()
-        
-        await intr.response.send_message(f"Assigned {user.mention} to Task{id}!", ephemeral=True)
+
+        embed = await getTaskEmbedFromID(self.client, id)
+        await intr.response.send_message(f"Successfully assigned {user.display_name} to Task #{id}", embed=embed)
 
 
     #-#-#-// Add_Step //-#-#-#
