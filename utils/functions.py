@@ -11,6 +11,16 @@ def getCurrentTime() -> str:
     return time.strftime("%d/%m/%Y %H:%M:%S GMT", time.gmtime())
 
 
+def listFind(array :list, value_to_find) -> bool:
+
+    try:
+
+        array.index(value_to_find)
+        return True
+    
+    except ValueError: return False
+
+
 async def getTaskEmbedFromID(client, id :int, deleted :bool = False):
 
     c :asql.Cursor = await client.db.cursor()
@@ -23,19 +33,11 @@ async def getTaskEmbedFromID(client, id :int, deleted :bool = False):
 
     task_name, dpt_name = values[2], values[1]
     status = values[3]
-    steps, assigned_people = values[4], values[5]
+    steps, assigned_people = values[4], str(values[5])
 
     embed = TaskEmbed(id, task_name, dpt_name, status, deleted, steps, assigned_people)
 
     return embed
-
-
-def createJSONOfAssignedPeople(json_str: str | None, user: discord.User) -> str:
-
-    assigned_people = {"user_ids":[]} if not json_str else json.loads(json_str)
-    
-    assigned_people["user_ids"].append(user.id)
-    return json.dumps(assigned_people)
 
 
 def createJSONSteps(json_str: str | None, step_name: str, step_status: bool, index :int) -> str:
