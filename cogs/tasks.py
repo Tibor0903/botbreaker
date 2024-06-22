@@ -238,6 +238,48 @@ class tasks(commands.Cog):
         await intr.response.send_message(f"Successfully assigned {user.display_name} to Task #{id}", embed=embed)
 
 
+    @app_commands.command(description="Removes an assigned user from the task")
+    @app_commands.rename(id="task_id")
+    @app_commands.describe(id="ID of the task you want to remove the user from",
+                           user="The user you want to remove from the task (automatically selects you if skipped)")
+    async def remove_person(self, intr: discord.Interaction, id: int, user: discord.User = None):
+
+        c: asql.Cursor = await self.client.db.cursor()
+
+        if not user: user = intr.user
+
+        await c.execute("SELECT assigned_people FROM tasks WHERE id = ?;", [id])
+
+
+        # Checks if task even exists
+        row = await c.fetchone()
+        if not row:
+            
+            await intr.response.send_message(task_404.format(id=id))
+            await c.close(); return
+
+
+        # Checks if the person is assigned
+        asgn_people = row[0]
+        split_asgn_people = str(asgn_people).split(",")
+        if not listFind(split_asgn_people, str(user.id)):
+
+            await intr.response.send_message(f"{user.display_name} is not assigned to Task #{id}")
+            await c.close(); return
+        
+
+        split_asgn_people.remove(str(user.id))
+        new_asgn_people = ",".join(split_asgn_people)
+
+        await c.execute("UPDATE tasks SET assigned_people = ? WHERE id = ?;", [new_asgn_people, id])
+
+        await self.client.db.commit()
+        await c.close()
+
+        embed = await getTaskEmbedFromID(self.client, id)
+        await intr.response.send_message(f"Successfully removed {user.display_name} from Task #{id}", embed=embed)
+
+
     #-#-#-// Add_Step //-#-#-#
 
     @app_commands.command()
