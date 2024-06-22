@@ -40,15 +40,6 @@ async def getTaskEmbedFromID(client, id :int, deleted :bool = False):
     return embed
 
 
-def createJSONSteps(json_str: str | None, step_name: str, step_status: bool, index :int) -> str:
-    
-    steps = {"steps":[]} if not json_str else json.loads(json_str)
-    index = len(steps["steps"]) if index <= 0 else index - 1
-
-    steps["steps"].insert(index, {"name":step_name, "status":step_status})
-    return json.dumps(steps)
-
-
 def createTable(column_names :list[str], rows :list[ list[str | int | bool] ]) -> discord.File:
 
     figure, ax = plt.subplots()

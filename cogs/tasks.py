@@ -282,25 +282,39 @@ class tasks(commands.Cog):
 
     #-#-#-// Add_Step //-#-#-#
 
-    @app_commands.command()
-    async def create_step(self, intr :discord.Interaction, id :int, name :str, index: int = 0, status :bool = False):
+    @app_commands.command(description="Adds a step to chosen task")
+    @app_commands.rename(id="task_id", name="step_name", index="place", status="finished")
+    @app_commands.describe(id="ID of the task you want to add a step to", name="Step's name",
+                           index="Step's placement in the task's description", status="Is the step done or not?")
+    async def add_step(self, intr :discord.Interaction, id :int, name :str, index: int = 0, status :bool = False):
 
-        client = self.client
+        c :asql.Cursor = await self.client.db.cursor()
 
-        c: asql.Cursor = await client.db.cursor()
+        index -= 1
 
-        await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
-        steps = (await c.fetchone())[0]
+        async with c:
 
-        steps = createJSONSteps(steps, name, status, index)
+            await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
 
-        await c.execute("UPDATE tasks SET steps = ? WHERE id = ? RETURNING msg_id;", [steps, id])
-        msg_id = (await c.fetchone())[0]
+            row = await c.fetchone()
+            if not row: await intr.response.send_message(task_404.format(id=id)); return
+            
+            old_steps = row[0]
 
-        await client.db.commit()
-        await c.close()
+            if not old_steps: old_steps = {"steps":[]}
+            else: old_steps = json.loads(old_steps)
 
-        await intr.response.send_message(f"```yaml\n Created a step for task {id}!```")
+            if index < 0: index = len(old_steps["steps"])
+
+            old_steps["steps"].insert(index, {"name" : name, "status" : status})
+
+            old_steps = json.dumps(old_steps)
+
+            await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [old_steps, id])
+            await self.client.db.commit()
+
+        embed = await getTaskEmbedFromID(self.client, id)
+        await intr.response.send_message(f"Successfully added a new step to Task #{id}", embed=embed)
 
 
     #-#-#-// Update Step //-#-#-#
