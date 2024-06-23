@@ -37,25 +37,9 @@ class TaskEmbed(ds_Embed):
         description = f"Status: {status_emoji}\n"
 
 
-        if steps:
-            
-            description += "\n"
-
-            steps :list = (json_loads(steps))["steps"]
-            steps_len   = len(steps)
-
-            for i, step in enumerate(steps):
-
-                status_str = "Finished :white_check_mark:" if step["status"] else "In progress :blue_square:"
-
-                description += f"{str(i+1)}. {step['name']}: {status_str}"
-
-                if i+1 != steps_len: description += "\n"
-
-
         if assigned_peeps:
 
-            description += "\n Assigned people: \n"
+            description += "\nAssigned people: \n"
 
             user_ids = assigned_peeps.split(",")
             ids_len  = len(user_ids)
@@ -65,6 +49,24 @@ class TaskEmbed(ds_Embed):
                 description += f"<@{user_id}>"
 
                 if i+1 != ids_len: description += ", "
+
+            description += "\n"
+
+
+        if steps:
+            
+            description += "\n"
+
+            steps :list = (json_loads(steps))
+            steps_len   = len(steps)
+
+            for i, step in enumerate(steps):
+
+                status_str = "Finished :white_check_mark:" if step["status"] else "In progress :blue_square:"
+
+                description += f"{str(i+1)}. {step['name']}: {status_str}"
+
+                if i+1 != steps_len: description += "\n"
 
 
         self.description = description

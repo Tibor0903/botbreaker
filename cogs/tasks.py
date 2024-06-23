@@ -301,12 +301,12 @@ class tasks(commands.Cog):
             
             old_steps = row[0]
 
-            if not old_steps: old_steps = {"steps":[]}
+            if not old_steps: old_steps = []
             else: old_steps = json.loads(old_steps)
 
-            if index < 0: index = len(old_steps["steps"])
+            if index < 0: index = len(old_steps)
 
-            old_steps["steps"].insert(index, {"name" : name, "status" : status})
+            old_steps.insert(index, {"name" : name, "status" : status})
 
             old_steps = json.dumps(old_steps)
 
@@ -315,6 +315,53 @@ class tasks(commands.Cog):
 
         embed = await getTaskEmbedFromID(self.client, id)
         await intr.response.send_message(f"Successfully added a new step to Task #{id}", embed=embed)
+
+
+    #-#-#-// Remove_Step //-#-#-#
+
+    @app_commands.command(description="Removes a chosen step from task")
+    @app_commands.rename(id="task_id", index="step_place")
+    @app_commands.describe(id="ID of the task you want to remove the step from",
+                           index="Step's place in the task")
+    async def remove_step(self, intr: discord.Interaction, id: int, index: int):
+
+        c :asql.Cursor = await self.client.db.cursor()
+
+        index -= 1
+
+        async with c:
+
+            await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
+
+            row = await c.fetchone()
+            if not row: await intr.response.send_message(task_404.format(id=id)); return
+
+            steps = row[0]
+            if not steps: await intr.response.send_message(f"Task #{id} doesn't have any steps"); return
+
+            steps = json.loads(steps)
+
+            if not len(steps):
+
+                await c.execute("UPDATE tasks SET steps = NULL WHERE id = ?;", [id])
+                await self.client.db.commit()
+
+                await intr.response.send_message(f"Task #{id} doesn't have any steps"); return
+
+            try: steps[index]
+            except IndexError:
+
+                await intr.response.send_message(f"Couldn't find step #{index+1}"); return
+            
+            steps.pop(index)
+            steps = json.dumps(steps)
+
+            await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [steps, id])
+            await self.client.db.commit()
+
+
+        embed = await getTaskEmbedFromID(self.client, id)
+        await intr.response.send_message(f"Successfully removed step #{index+1} from Task #{id}", embed=embed)
 
 
     #-#-#-// Update Step //-#-#-#

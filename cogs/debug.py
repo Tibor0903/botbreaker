@@ -53,7 +53,7 @@ class debug_commands(commands.Cog):
 
     #-#-#-#-#-#-// Temporary commands //-#-#-#-#-#-#-
 
-    @app_commands.command(description='Deletes the "message_id" column')
+    @app_commands.command(description='Deletes the "msg_id" column')
     async def delete_msg_ids(self, intr :discord.Interaction):
 
         c = await self.client.db.cursor()
@@ -67,7 +67,7 @@ class debug_commands(commands.Cog):
 
 
     @app_commands.command()
-    async def convert_people_to_string(self, intr :discord.Interaction):
+    async def update_assigned_people(self, intr :discord.Interaction):
 
         c = await self.client.db.cursor()
 
@@ -104,4 +104,34 @@ class debug_commands(commands.Cog):
 
         await self.client.db.commit()
         await c.close()
-        await intr.response.send_message("Successfully converted assigned_people to string")
+        await intr.response.send_message("Successfully updated assigned_people")
+
+
+    @app_commands.command()
+    async def update_steps(self, intr :discord.Interaction):
+
+        c = await self.client.db.cursor()
+
+        async with c:
+
+            await c.execute("SELECT steps, id FROM tasks;")
+
+            rows = await c.fetchall()
+
+            for row in rows:
+
+                if row[0] is None: continue
+
+                try:
+
+                    data = json.loads(row[0])
+                    data = data["steps"]
+                    data = json.dumps(data)
+
+                    await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [data, row[1]])
+                
+                except json.JSONDecodeError: continue
+
+            await self.client.db.commit()
+
+        await intr.response.send_message("Successfully updated steps to newer version")

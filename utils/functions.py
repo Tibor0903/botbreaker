@@ -33,7 +33,9 @@ async def getTaskEmbedFromID(client, id :int, deleted :bool = False):
 
     task_name, dpt_name = values[2], values[1]
     status = values[3]
-    steps, assigned_people = values[4], str(values[5])
+    steps, assigned_people = values[4], values[5]
+
+    if assigned_people: assigned_people = str(assigned_people)
 
     embed = TaskEmbed(id, task_name, dpt_name, status, deleted, steps, assigned_people)
 
