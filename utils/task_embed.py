@@ -50,6 +50,8 @@ class TaskEmbed(ds_Embed):
 
                 if i+1 != ids_len: description += ", "
 
+                if (i+1) % 3 == 0 and i+1 != ids_len: description += "\n"
+
             description += "\n"
 
 

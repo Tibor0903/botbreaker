@@ -366,32 +366,46 @@ class tasks(commands.Cog):
 
     #-#-#-// Update Step //-#-#-#
 
-    @app_commands.command()
-    async def update_step(self, intr :discord.Interaction, task_id :int, step_index :int, new_name :str):
+    @app_commands.command(description="Updates a step in the chosen task")
+    @app_commands.rename(id="task_id", index="step_place", name="new_step_name", status="new_step_status")
+    @app_commands.describe(id="Task's ID", index="Step's place in the task", name="Self-explanatory", status="Is the step now finished or not?")
+    async def update_step(self, intr :discord.Interaction, id :int, index :int, name :str = None, status :bool = None):
 
-        client = self.client
+        c :asql.Cursor = await self.client.db.cursor()
 
-        id    = task_id
-        index = step_index - 1 # -1 is here because the first step must be zero, the second - one and so on
+        index -= 1
 
+        if not name and status is None:
 
-        c: asql.Cursor = await client.db.cursor()
+            await intr.response.send_message("No new values have been given")
+            return
 
-        await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
-        steps = (await c.fetchone())[0]
+        async with c:
+
+            await c.execute("SELECT steps FROM tasks WHERE id = ?;", [id])
+
+            row = await c.fetchone()
+            if not row: await intr.response.send_message(task_404.format(id=id)); return
+
+            steps = row[0]
+            if steps is None: await intr.response.send_message(f"Task #{id} doesn't have any steps"); return
+
+            steps = json.loads(steps)
+
+            try: step = steps[index]
+            except IndexError:
+                
+                await intr.response.send_message(f"Step #{index+1} doesn't exist in Task #{id}")
+                return
+            
+            if name: step["name"] = name
+            if not (status is None): step["status"] = status
+
+            steps = json.dumps(steps)
+
+            await c.execute("UPDATE tasks SET steps = ? WHERE id = ?;", [steps, id])
+            await self.client.db.commit()
+
         
-        steps_dict = json.loads(steps)
-        step = steps_dict["steps"][index]
-
-        step['name'] = new_name
-        steps_dict["steps"][index] = step
-
-        await c.execute("UPDATE tasks SET steps = ? WHERE id = ? RETURNING msg_id;", [json.dumps(steps_dict), id])
-        msg_id = (await c.fetchone())[0]
-
-        await client.db.commit()
-        await c.close()
-
-        await intr.response.send_message(f"```yaml\n Updated step {step_index} in task {task_id}!```")
-
-        embed = await getTaskEmbedFromID(id)
+        embed = await getTaskEmbedFromID(self.client, id)
+        await intr.response.send_message(f"Successfully updated step #{index+1} in Task #{id}", embed=embed)
