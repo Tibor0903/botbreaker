@@ -1,5 +1,7 @@
 import aiosqlite as asql
 
+from asyncio import TimeoutError as asyncio_TimeoutError
+
 from utils.functions import *
 from utils.task_embed import TaskEmbed
 from utils import buttons as view_buttons
@@ -192,6 +194,53 @@ class tasks(commands.Cog):
         table = createTable(columns, tasks)
 
         await intr.followup.send(file=table)
+
+
+    #-#-#-// Make_Tasks_with_TXT //-#-#-#
+
+    @app_commands.command(description="Creates tasks using a txt file")
+    async def make_tasks_with_txt(self, intr :discord.Interaction, ignore_similar_tasks :bool = False):
+
+        channel = intr.channel
+
+        await intr.response.send_message("Send a .txt file in this channel to create tasks")
+
+
+        def message_check(msg :discord.Message):
+            
+            is_same_environment = msg.author == intr.user and msg.channel == channel
+
+            txt_file = None
+            for attachment in msg.attachments:
+
+                if attachment.content_type.startswith("text/plain"):
+
+                    txt_file = attachment; break
+
+
+            if not is_same_environment: return False
+
+            return txt_file
+
+
+        try:
+            new_msg :discord.Message = await self.client.wait_for("message", timeout=60, check=message_check)
+        
+        except asyncio_TimeoutError:
+
+            await channel.send(f"{intr.user.mention}, you didn't send the .txt file in time (60 seconds)", silent=True); return
+        else:
+
+            file = None
+            for attachment in new_msg.attachments:
+
+                if attachment.content_type.startswith("text/plain"):
+
+                    file = attachment; break
+                
+
+        task_image = await makeTasksFromTXT(self.client, file, ignore_similar_tasks)
+        await channel.send(file=task_image)
         
     
     #-#-#-// Assign_Person //-#-#-#

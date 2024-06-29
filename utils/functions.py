@@ -42,6 +42,93 @@ async def getTaskEmbedFromID(client, id :int, deleted :bool = False):
     return embed
 
 
+async def makeTasksFromTXT(client, file :discord.Attachment, ignore_similar_tasks :bool):
+
+    c :asql.Cursor = await client.db.cursor()
+
+    encoding = file.content_type[20:]
+    txt = str(await file.read(), encoding)
+
+    tasks = txt.splitlines()
+
+
+    def removeSpaces(string :str, reverse :bool = False) -> str:
+
+        new_string = string
+        if reverse: new_string = reversed(string)
+
+        for char in new_string:
+
+            if char == " ":
+
+                if not reverse: string = string[1:]
+                if reverse    : string = string[:-1]
+            else:
+                break
+
+        return string
+        
+
+
+    processed_tasks = []
+    for task in tasks:
+
+        task = task.split(";")
+        if len(task) < 2: continue  # Skips empty lines
+
+        for i in range(len(task)):
+
+            task[i] = removeSpaces(task[i])
+            task[i] = removeSpaces(task[i], True)
+
+        processed_tasks.append(task)
+
+
+    rows = []
+    for task in processed_tasks:
+
+        task_dpt    = task[0]
+        task_name   = task[1]
+        task_status = task[2]
+
+        if not ignore_similar_tasks:
+            
+            await c.execute("SELECT id FROM tasks WHERE department_name = ? AND task_name = ?;", [task_dpt, task_name])
+
+            similar_task = await c.fetchone()
+            if not (similar_task is None) and len(similar_task): continue
+
+
+        status_value = False
+
+        str_status_value = str(task_status).lower()
+        if str_status_value == "true": 
+            status_value = True
+
+        elif str_status_value != "false" and str_status_value != "": 
+            status_value = bool(int(task_status))
+
+        task_status = status_value
+
+        await c.execute("INSERT INTO tasks (department_name, task_name, status) VALUES (?, ?, ?) RETURNING id;", task)
+
+        id = (await c.fetchone())[0]
+        await client.db.commit()
+        
+        status_names = ["In process", "Done"]
+        task_status = status_names[int(task_status)]
+
+        row = [id, task_dpt, task_name, task_status]
+
+        rows.append(row)
+
+    print(len(rows))
+
+    column_names = ["IDs", "Department(s)", "Tasks", "Status"]
+
+    return createTable(column_names, rows)
+
+
 def createTable(column_names :list[str], rows :list[ list[str | int | bool] ]) -> discord.File:
 
     figure, ax = plt.subplots()
