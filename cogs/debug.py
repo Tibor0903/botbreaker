@@ -36,7 +36,7 @@ class debug_commands(commands.Cog):
     @app_commands.command(description="Info about the server the bot's running on")
     async def server_info(self, intr :discord.Interaction):
 
-        if os.getlogin() == 'tibor0903' or 'pi':
+        if str(os.getlogin()) == 'tibor0903':
 
             temperature = os.popen('vcgencmd measure_temp').read()
             temperature = temperature[temperature.index('=') + 1:-2]
