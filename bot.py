@@ -35,9 +35,10 @@ class Bot(commands.Bot):
     async def setup_hook(self) -> None:
 
         # Cache cleaner
-
-        deleteFilesInFolder("app_cache")
-
+        try:
+            deleteFilesInFolder("app_cache")
+        except:
+            print('Deleting cache failed, probably no cache to delete')
 
         # Database loader
 
