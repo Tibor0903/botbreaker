@@ -1,12 +1,27 @@
 from utils.functions import *
 
-import discord, aiosqlite as asql
+import discord, os, aiosqlite as asql
 from discord.ext import commands
 
 from colorama import Style, Fore
 
 
 sys_message_divider = "---------------"
+
+
+def deleteFilesInFolder(folder_path :str):
+
+    for obj in os.listdir(folder_path):
+
+        obj = f"{folder_path}/{obj}"
+
+        if os.path.isfile(obj):
+
+            os.remove(obj)
+        else:
+
+            deleteFilesInFolder(obj)
+            os.rmdir(obj)
 
 
 class Bot(commands.Bot):
@@ -19,6 +34,12 @@ class Bot(commands.Bot):
 
     async def setup_hook(self) -> None:
 
+        try:
+            deleteFilesInFolder("app_cache")
+        except FileNotFoundError:
+            os.mkdir('app_cache')
+        except:
+            print(Style.RESET_ALL+Fore.YELLOW+'Could not delete app_cache!'+Style.RESET_ALL)
         # Database loader
 
         self.db = await asql.connect("main.db")
@@ -27,11 +48,10 @@ class Bot(commands.Bot):
         async with cursor as c:
             await c.execute(("CREATE TABLE IF NOT EXISTS tasks ("
                         "id INTEGER PRIMARY KEY, "
-                        "msg_id INTEGER, "
                         "department_name STRING, "
                         "task_name STRING, "
                         "status BOOLEAN, "
-                        "assigned_people JSON, "
+                        "assigned_people STRING, "
                         "steps JSON);"
                         ))
             
@@ -60,6 +80,7 @@ class Bot(commands.Bot):
     async def on_resumed(self):
 
         await self.change_presence(status = discord.Status.online, activity = discord.Game('BLADEBREAKER'))
+        
         print(Fore.GREEN+f"{sys_message_divider}\n")
         print(f"The bot has resumed session at {getCurrentTime()}!")
         print(f"\n{sys_message_divider}"+Style.RESET_ALL)

@@ -1,4 +1,5 @@
 import discord, time, json, aiosqlite as asql
+import PIL.Image as Image, pandas as pd, matplotlib.pyplot as plt
 
 from utils.task_embed import TaskEmbed
 
@@ -10,7 +11,17 @@ def getCurrentTime() -> str:
     return time.strftime("%d/%m/%Y %H:%M:%S GMT", time.gmtime())
 
 
-async def getTaskEmbedFromID(client, id :int):
+def listFind(array :list, value_to_find) -> bool:
+
+    try:
+
+        array.index(value_to_find)
+        return True
+    
+    except ValueError: return False
+
+
+async def getTaskEmbedFromID(client, id :int, deleted :bool = False):
 
     c :asql.Cursor = await client.db.cursor()
 
@@ -20,99 +31,43 @@ async def getTaskEmbedFromID(client, id :int):
 
     if not values: return None
 
-    task_name, dpt_name = values[3], values[2]
-    status = True if values[4] else False
-    steps, assigned_people = values[6], values[5]
+    task_name, dpt_name = values[2], values[1]
+    status = values[3]
+    steps, assigned_people = values[4], values[5]
 
-    embed = TaskEmbed(id=id, task_name=task_name, task_dpt=dpt_name, finished=status, steps=steps, assigned_peeps=assigned_people)
+    if assigned_people: assigned_people = str(assigned_people)
+
+    embed = TaskEmbed(id, task_name, dpt_name, status, deleted, steps, assigned_people)
 
     return embed
 
 
-async def updateTaskEmbed(intr :discord.Interaction, msg_id :int, embed :discord.Embed):
+def createTable(column_names :list[str], rows :list[ list[str | int | bool] ]) -> discord.File:
 
-    for channel in intr.guild.channels:
-        if type(channel) != discord.TextChannel: continue
+    figure, ax = plt.subplots()
 
-        msg = await channel.fetch_message(msg_id) # throws 404 (still works but should probably fix)
-        await msg.edit(embed = embed)
+    # Hides axis
+    figure.patch.set_visible(False)
+    ax.axis('off')
+    ax.axis('tight')
 
+    df = pd.DataFrame(rows, columns=column_names)
 
+    table = ax.table(cellText=df.values, colLabels=df.columns, loc='center', colLoc='center', cellLoc="left")
+    table.auto_set_column_width(col=list(range(len(df.columns))))
 
-def createJSONOfAssignedPeople(json_str: str | None, user: discord.User) -> str:
-
-    assigned_people = {"user_ids":[]} if not json_str else json.loads(json_str)
-    
-    assigned_people["user_ids"].append(user.id)
-    return json.dumps(assigned_people)
-
-
-def createJSONSteps(json_str: str | None, step_name: str, step_status: bool, index :int) -> str:
-    
-    steps = {"steps":[]} if not json_str else json.loads(json_str)
-    index = len(steps["steps"]) if index <= 0 else index - 1
-
-    steps["steps"].insert(index, {"name":step_name, "status":step_status})
-    return json.dumps(steps)
+    figure.tight_layout()
 
 
-def createTable(keys :list, values :list, used_char_amount :int) -> str:
+    file_name = f"app_cache/table{time.time().__round__()}.png"
+    figure.set_size_inches(13, 7.5)
 
-    horizontal_count = [len(key) for key in keys]
+    plt.savefig(file_name, dpi = 200)
 
-    for value_tuple in values:
+    with Image.open(file_name) as f:
 
-        for value in value_tuple:
-            i = value_tuple.index(value)
+        new_image = f.crop(f.getbbox())
+        new_image.save(file_name)
 
-            if horizontal_count[i] >= len(str(value)): continue
 
-            horizontal_count[i] = len(str(value))
-
-    table = ""
-
-    for key in keys:
-        i = keys.index(key)
-
-        table += key
-        for i in range(horizontal_count[i] - len(key)): table += " "
-        table += " | "
-
-    divider = "\n"
-    for i in range(len(keys)):
-        
-        for o in range(horizontal_count[i]): divider += "-"
-
-        if i == len(keys) - 1: divider += "-|"
-        else: divider += "-|-"
-
-    available_char_count = 2000 - (2 + used_char_amount + len(table) + len(divider))
-
-    value_rows = "\n"
-    for value_tuple in values:
-        for value in value_tuple:
-
-            i = value_tuple.index(value)
-            value = str(value)
-
-            value_row = ""
-
-            value_row += value
-            for o in range(horizontal_count[i] - len(value)): value_row += " "
-            value_row += " | "
-
-            if available_char_count >= len(value_row): 
-
-                value_rows += value_row
-                available_char_count -= len(value_row)
-                continue
-
-            break
-
-        if available_char_count < 2: break
-        available_char_count -= 2
-        value_rows += "\n"
-
-    table += divider + value_rows
-
-    return table
+    return discord.File(file_name)
