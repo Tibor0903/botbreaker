@@ -180,14 +180,14 @@ class tasks(commands.Cog):
             tasks = []
             for task in rows:
 
-                status = "Done" if task[3] else "In process"
+                status = "Done" if task[3] else "To Do" # maybe add this seperate from In Progress in a later update
 
                 tasks.append([task[0], task[1], task[2], status])
 
 
         await intr.response.defer(thinking=True)
 
-        columns = ["IDs", "Department(s)", "Tasks", "Status"]
+        columns = ["IDs", "Department(s)", "Task", "Status"]
 
         table = createTable(columns, tasks)
 
