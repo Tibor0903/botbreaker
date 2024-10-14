@@ -1,4 +1,4 @@
-import aiosqlite as asql
+import json, aiosqlite as asql
 
 from asyncio import TimeoutError as asyncio_TimeoutError
 
@@ -191,9 +191,38 @@ class tasks(commands.Cog):
 
         columns = ["IDs", "Department(s)", "Task", "Status"]
 
-        table = createTable(columns, tasks)
 
-        await intr.followup.send(file=table)
+        tasks_line = ""
+        for task in tasks:
+            for value in task: tasks_line += str(value)
+
+        image_ref = str.join("", [hex(ord(c))[2:] for c in tasks_line])
+        links = {}
+        
+        try:
+            with open("app_cache/table_links.json", "r") as table_links:
+                try: 
+                    links = json.load(table_links)
+
+                except json.JSONDecodeError:
+                    links = {}
+                
+                link = links.get(image_ref)
+                if link: 
+
+                    await intr.followup.send(link)
+                    return
+        except: pass
+            
+
+        with open("app_cache/table_links.json", "w") as table_links:
+
+            table = createTable(columns, tasks)
+            sent_msg = await (await intr.followup.send(file=table, wait=True)).fetch()
+            
+            links[image_ref] = sent_msg.attachments[0].url
+            json.dump(links, table_links)
+
 
 
     #-#-#-// Make_Tasks_with_TXT //-#-#-#
