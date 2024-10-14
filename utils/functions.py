@@ -1,4 +1,4 @@
-import discord, time, json, aiosqlite as asql
+import discord, time, aiosqlite as asql
 import PIL.Image as Image, pandas as pd, matplotlib.pyplot as plt
 
 from utils.task_embed import TaskEmbed
@@ -121,6 +121,7 @@ async def makeTasksFromTXT(client, file :discord.Attachment, ignore_similar_task
 
 def createTable(column_names :list[str], rows :list[ list[str | int | bool] ]) -> discord.File:
 
+    file_name = f"app_cache/table{time.time().__round__()}.png"
     figure, ax = plt.subplots()
 
     # Hides axis
@@ -133,13 +134,8 @@ def createTable(column_names :list[str], rows :list[ list[str | int | bool] ]) -
     table = ax.table(cellText=df.values, colLabels=df.columns, loc='center', colLoc='center', cellLoc="left")
     table.auto_set_column_width(col=list(range(len(df.columns))))
 
-    figure.tight_layout()
 
-
-    file_name = f"app_cache/table{time.time().__round__()}.png"
-    figure.set_size_inches(13, 7.5)
-
-    plt.savefig(file_name, dpi = 200)
+    plt.savefig(file_name, bbox_inches="tight", dpi = 200)
 
     with Image.open(file_name) as f:
 
