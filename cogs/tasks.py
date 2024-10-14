@@ -198,6 +198,7 @@ class tasks(commands.Cog):
 
         links = {}
         
+        if not os.path.exists("app_cache"): os.mkdir("app_cache")
         try:
             with open("app_cache/table_links.json", "r") as table_links:
                 try: 

@@ -1,4 +1,4 @@
-import discord, time, aiosqlite as asql
+import discord, time, os, aiosqlite as asql
 import PIL.Image as Image, pandas as pd, matplotlib.pyplot as plt
 
 from utils.task_embed import TaskEmbed
@@ -137,6 +137,7 @@ def createTable(column_names :list[str], rows :list[ list[str | int | bool] ]) -
 
     plt.savefig(file_name, bbox_inches="tight", dpi = 200)
 
+    if not os.path.exists("app_cache"): os.mkdir("app_cache")
     with Image.open(file_name) as f:
 
         new_image = f.crop(f.getbbox())
