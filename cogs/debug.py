@@ -48,7 +48,7 @@ class debug_commands(commands.Cog):
             await intr.response.send_message(embed=embed)
         else:
 
-            await intr.response.send_message("Running on test server\n Data unavailable")
+            await intr.response.send_message("Running on test server\nData unavailable")
 
 
     #-#-#-#-#-#-// Temporary commands //-#-#-#-#-#-#-
