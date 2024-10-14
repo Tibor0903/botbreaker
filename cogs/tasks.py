@@ -1,4 +1,4 @@
-import json, aiosqlite as asql
+import json, os, aiosqlite as asql
 
 from asyncio import TimeoutError as asyncio_TimeoutError
 
@@ -192,11 +192,10 @@ class tasks(commands.Cog):
         columns = ["IDs", "Department(s)", "Task", "Status"]
 
 
-        tasks_line = ""
+        image_ref = ""
         for task in tasks:
-            for value in task: tasks_line += str(value)
+            for value in task: image_ref += str(value)
 
-        image_ref = str.join("", [hex(ord(c))[2:] for c in tasks_line])
         links = {}
         
         try:
@@ -218,7 +217,8 @@ class tasks(commands.Cog):
         with open("app_cache/table_links.json", "w") as table_links:
 
             table = createTable(columns, tasks)
-            sent_msg = await (await intr.followup.send(file=table, wait=True)).fetch()
+            sent_webhook_msg = await intr.followup.send(file=table, wait=True)
+            sent_msg = await sent_webhook_msg.fetch()
             
             links[image_ref] = sent_msg.attachments[0].url
             json.dump(links, table_links)
