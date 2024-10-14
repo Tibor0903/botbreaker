@@ -34,11 +34,12 @@ class Bot(commands.Bot):
 
     async def setup_hook(self) -> None:
 
-        # Cache cleaner
-
-        deleteFilesInFolder("app_cache")
-
-
+        try:
+            deleteFilesInFolder("app_cache")
+        except FileNotFoundError:
+            os.mkdir('app_cache')
+        except:
+            print(Style.RESET_ALL+Fore.YELLOW+'Could not delete app_cache!'+Style.RESET_ALL)
         # Database loader
 
         self.db = await asql.connect("main.db")
