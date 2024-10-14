@@ -11,16 +11,6 @@ def getCurrentTime() -> str:
     return time.strftime("%d/%m/%Y %H:%M:%S GMT", time.gmtime())
 
 
-def listFind(array :list, value_to_find) -> bool:
-
-    try:
-
-        array.index(value_to_find)
-        return True
-    
-    except ValueError: return False
-
-
 async def getTaskEmbedFromID(client, id :int, deleted :bool = False):
 
     c :asql.Cursor = await client.db.cursor()

@@ -266,7 +266,7 @@ class tasks(commands.Cog):
         old_asgn_people = row[0]
         comma = ","
 
-        if listFind(str(old_asgn_people).split(","), str(user.id)):
+        if str(user.id) in str(old_asgn_people).split(","):
 
             await intr.response.send_message(f"{user.display_name} is already assigned to Task #{id}")
             await c.close(); return
@@ -311,7 +311,7 @@ class tasks(commands.Cog):
         # Checks if the person is assigned
         asgn_people = row[0]
         split_asgn_people = str(asgn_people).split(",")
-        if not listFind(split_asgn_people, str(user.id)):
+        if not (str(user.id) in split_asgn_people):
 
             await intr.response.send_message(f"{user.display_name} is not assigned to Task #{id}")
             await c.close(); return
